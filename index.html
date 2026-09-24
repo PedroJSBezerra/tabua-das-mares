@@ -137,7 +137,7 @@
         .touch-scroll-wrapper::-webkit-scrollbar { display: none; }
 
         .chart-inner-container {
-            width: 3200px; /* Largura aumentada para acomodar todas as horas visivelmente */
+            width: 3200px;
             height: 280px;
         }
 
@@ -585,6 +585,29 @@
         return hoursArray;
     }
 
+    // Interpolação contínua na linha do tempo global dos 4 dias
+    function calcularNivelParaMinutoContinuo(minAbsoluto, todasMaresOrdenadas) {
+        if (!todasMaresOrdenadas || todasMaresOrdenadas.length === 0) return 1.0;
+        
+        let pAnterior = null;
+        let pProximo = null;
+
+        for (let i = 0; i < todasMaresOrdenadas.length; i++) {
+            let pt = todasMaresOrdenadas[i];
+            if (pt.minAbsoluto <= minAbsoluto) pAnterior = pt;
+            if (pt.minAbsoluto >= minAbsoluto && !pProximo) pProximo = pt;
+        }
+
+        if (!pAnterior && pProximo) return pProximo.level;
+        if (pAnterior && !pProximo) return pAnterior.level;
+        if (!pAnterior && !pProximo) return 1.0;
+        if (pAnterior.minAbsoluto === pProximo.minAbsoluto) return pAnterior.level;
+
+        let prop = (minAbsoluto - pAnterior.minAbsoluto) / (pProximo.minAbsoluto - pAnterior.minAbsoluto);
+        let levelInter = pAnterior.level + (pProximo.level - pAnterior.level) * (1 - Math.cos(prop * Math.PI)) / 2;
+        return parseFloat(levelInter.toFixed(2));
+    }
+
     async function carregarTabua4Dias(diaBase) {
         const temTudoCache = [ -1, 0, 1, 2 ].every(offset => {
             let dObj = new Date(anoExibido, mesExibido - 1, diaBase + offset);
@@ -604,7 +627,10 @@
         const minAtualTotal = agora.getHours() * 60 + agora.getMinutes();
 
         try {
-            let diasDados = [];
+            let todasMaresOrdenadas = [];
+            let diasEstrutura = [];
+
+            // 1. Unifica todos os picos de maré dos 4 dias em uma linha do tempo única
             for (let offset = -1; offset <= 2; offset++) {
                 let dObj = new Date(anoExibido, mesExibido - 1, diaBase + offset);
                 let dAlvo = dObj.getDate();
@@ -614,38 +640,42 @@
                 let hoursArray = await buscarHorasComCache(portoSelecionado.id, mAlvo, dAlvo, aAlvo);
                 hoursArray.sort((a, b) => a.hour.localeCompare(b.hour));
                 
-                diasDados.push({
-                    offset, dAlvo, mAlvo, aAlvo, hoursArray
+                let baseMinutosDia = (offset + 1) * 1440; // Offset relativo: dia -1 = 0 min, dia 0 = 1440 min, etc.
+
+                hoursArray.forEach(m => {
+                    let minNoDia = horaParaMinutos(m.hour);
+                    todasMaresOrdenadas.push({
+                        minAbsoluto: baseMinutosDia + minNoDia,
+                        level: m.level
+                    });
                 });
+
+                diasEstrutura.push({ offset, dAlvo, mAlvo, aAlvo, baseMinutosDia });
             }
 
-            diasDados.forEach((diaInfo, dIdx) => {
-                let { offset, dAlvo, mAlvo, aAlvo, hoursArray } = diaInfo;
-                let baseMinutosDia = (dIdx - 1) * 1440;
+            todasMaresOrdenadas.sort((a, b) => a.minAbsoluto - b.minAbsoluto);
 
-                // Gerando dados pontuais de hora em hora (0 a 23)
-                let pontosCompletosDia = [];
-                
+            // 2. Gera pontos contínuos de hora em hora (0h a 23h) evitando saltos nas viradas de dia
+            diasEstrutura.forEach(diaInfo => {
+                let { dAlvo, mAlvo, aAlvo, baseMinutosDia } = diaInfo;
+
                 for (let h = 0; h < 24; h++) {
-                    let minHora = h * 60;
-                    // Interpolação para obter o nível exato na hora cheia
-                    let levelCalc = calcularNivelParaMinuto(minHora, hoursArray);
-                    pontosCompletosDia.push({ min: minHora, level: levelCalc, horaExata: h });
-                }
+                    let minAbsolutoHora = baseMinutosDia + (h * 60);
+                    
+                    let levelCalc = calcularNivelParaMinutoContinuo(minAbsolutoHora, todasMaresOrdenadas);
 
-                pontosCompletosDia.forEach(pt => {
-                    rotulosGlobais.push(`${dAlvo}/${mAlvo} - ${pt.horaExata}`);
-                    dadosGlobais.push(pt.level);
+                    rotulosGlobais.push(`${dAlvo}/${mAlvo} - ${h}`);
+                    dadosGlobais.push(levelCalc);
 
                     const ehO_DiaAtual = (dAlvo === agora.getDate() && mAlvo === (agora.getMonth() + 1) && aAlvo === agora.getFullYear());
                     if (ehO_DiaAtual) {
-                        let diff = Math.abs(pt.min - minAtualTotal);
+                        let diff = Math.abs((h * 60) - minAtualTotal);
                         if (diff < menorDiferencaMinutos) {
                             menorDiferencaMinutos = diff;
                             indiceGlobalAtual = rotulosGlobais.length - 1;
                         }
                     }
-                });
+                }
             });
 
         } catch (e) {
@@ -658,27 +688,6 @@
         ultimoTotalRotulos = rotulosGlobais.length;
 
         renderizarGrafico4Dias(rotulosGlobais, dadosGlobais, indiceGlobalAtual);
-    }
-
-    function calcularNivelParaMinuto(minAlvo, hoursArray) {
-        if (!hoursArray || hoursArray.length === 0) return 1.0;
-        
-        let pAnterior = null;
-        let pProximo = null;
-
-        for (let i = 0; i < hoursArray.length; i++) {
-            let m = horaParaMinutos(hoursArray[i].hour);
-            if (m <= minAlvo) pAnterior = { min: m, level: hoursArray[i].level };
-            if (m >= minAlvo && !pProximo) pProximo = { min: m, level: hoursArray[i].level };
-        }
-
-        if (!pAnterior) return hoursArray[0].level;
-        if (!pProximo) return hoursArray[hoursArray.length - 1].level;
-        if (pAnterior.min === pProximo.min) return pAnterior.level;
-
-        let prop = (minAlvo - pAnterior.min) / (pProximo.min - pAnterior.min);
-        let levelInter = pAnterior.level + (pProximo.level - pAnterior.level) * (1 - Math.cos(prop * Math.PI)) / 2;
-        return parseFloat(levelInter.toFixed(2));
     }
 
     function extrairHorasRecursivo(obj, diaAlvo) {
@@ -870,7 +879,7 @@
                         },
                         ticks: { 
                             color: '#848e9c', 
-                            autoSkip: false, // Força a exibição de cada hora sem ocultar
+                            autoSkip: false,
                             maxRotation: 0,
                             callback: function(value, index, ticks) {
                                 const labelFull = this.getLabelForValue(value);
