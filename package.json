@@ -1,0 +1,9 @@
+{
+  "name": "tabuadasmares",
+  "version": "1.0.0",
+  "description": "Consulta de tábua de marés e portos",
+  "scripts": {
+    "build": "echo 'Build concluído com sucesso!'"
+  },
+  "dependencies": {}
+}

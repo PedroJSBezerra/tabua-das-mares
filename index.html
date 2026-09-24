@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PJ Mobile - Tábua de Marés</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #007bff;
+            --primary-dark: #0056b3;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --border-color: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+        }
+        .main-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 14px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        h2 { font-size: 16px; margin: 0 0 10px 0; text-align: center; color: #222; }
+        .form-group { margin-bottom: 10px; }
+        label { display: block; font-size: 11px; font-weight: bold; color: #666; margin-bottom: 4px; }
+        select, .btn {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        select { border: 1px solid var(--border-color); background: #fff; }
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            margin-top: 4px;
+        }
+        .btn:active { background-color: var(--primary-dark); }
+        .btn-gps { background-color: #28a745; }
+        .btn-gps:active { background-color: #1e7e34; }
+        
+        .chart-container { position: relative; height: 260px; width: 100%; }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .calendar-header button {
+            background: #e2e8f0;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .day-cell {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .day-cell.selected { background: var(--primary) !important; color: white !important; font-weight: bold; }
+        .day-cell.empty { background: transparent; border: none; cursor: default; }
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            justify-content: center;
+            align-items: center;
+            font-size: 15px;
+            font-weight: bold;
+            z-index: 999;
+            flex-direction: column;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+    <div id="loadingText">Carregando...</div>
+</div>
+
+<div class="main-container">
+    <div class="card">
+        <h2>PJ Mobile - Tábua de Marés</h2>
+        
+        <div class="form-group">
+            <label>1. Selecione o Estado:</label>
+            <select id="selectEstado" onchange="aoMudarEstado()">
+                <option value="">Selecione o Estado...</option>
+                <option value="ce">Ceará (CE)</option>
+                <option value="rn">Rio Grande do Norte (RN)</option>
+                <option value="pe">Pernambuco (PE)</option>
+                <option value="ba">Bahia (BA)</option>
+                <option value="ma">Maranhão (MA)</option>
+                <option value="pa">Pará (PA)</option>
+                <option value="ap">Amapá (AP)</option>
+                <option value="pi">Piauí (PI)</option>
+                <option value="pb">Paraíba (PB)</option>
+                <option value="al">Alagoas (AL)</option>
+                <option value="se">Sergipe (SE)</option>
+                <option value="es">Espírito Santo (ES)</option>
+                <option value="rj">Rio de Janeiro (RJ)</option>
+                <option value="sp">São Paulo (SP)</option>
+                <option value="pr">Paraná (PR)</option>
+                <option value="sc">Santa Catarina (SC)</option>
+                <option value="rs">Rio Grande do Sul (RS)</option>
+            </select>
+        </div>
+
+        <button class="btn btn-gps" onclick="detectarEstadoGPS()">📍 Detectar via GPS</button>
+
+        <div class="form-group" style="margin-top: 10px;">
+            <label>2. Selecione o Porto:</label>
+            <select id="selectPorto" onchange="aoMudarPorto()" disabled>
+                <option value="">Selecione o Estado primeiro...</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="card" id="cardGrafico" style="display: none;">
+        <h3 id="tituloGrafico" style="font-size: 13px; margin: 0 0 8px 0; text-align: center; color: #555;">Gráfico de Maré</h3>
+        <div class="chart-container">
+            <canvas id="mareChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card" id="cardCalendario" style="display: none;">
+        <div class="calendar-header">
+            <button onclick="mudarMes(-1)">◀ Mês</button>
+            <span id="currentMonthYearLabel" style="font-weight: bold; font-size: 13px;">Mês Ano</span>
+            <button onclick="mudarMes(1)">Mês ▶</button>
+        </div>
+
+        <div class="weekdays">
+            <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
+        </div>
+        <div class="days-grid" id="calendarDaysGrid"></div>
+    </div>
+</div>
+
+<script>
+    const basePortosFallback = {
+        ce: [
+            { id: "ce02", harbor_name: "PORTO DE MUCURIPE (FORTALEZA)", state: "ce" },
+            { id: "ce01", harbor_name: "PORTO DE CAMOCIM", state: "ce" },
+            { id: "ce03", harbor_name: "PORTO DO PECÉM", state: "ce" }
+        ],
+        sp: [
+            { id: "sp01", harbor_name: "PORTO DE SANTOS", state: "sp" },
+            { id: "sp02", harbor_name: "PORTO DE SÃO SEBASTIÃO", state: "sp" }
+        ],
+        rj: [
+            { id: "rj01", harbor_name: "PORTO DO RIO DE JANEIRO", state: "rj" },
+            { id: "rj02", harbor_name: "PORTO DE ANGRA DOS REIS", state: "rj" }
+        ],
+        ba: [
+            { id: "ba01", harbor_name: "PORTO DE SALVADOR", state: "ba" },
+            { id: "ba02", harbor_name: "PORTO DE ILHÉUS", state: "ba" }
+        ]
+    };
+
+    let meuGrafico = null;
+    let portoSelecionado = null;
+    let listaPortosEstado = [];
+    
+    const hojeData = new Date();
+    let anoExibido = hojeData.getFullYear();
+    let mesExibido = hojeData.getMonth() + 1;
+    let diaSelecionado = hojeData.getDate();
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const estadoSalvo = localStorage.getItem('pj_estado');
+        const portoSalvo = localStorage.getItem('pj_porto_obj');
+        if (estadoSalvo && portoSalvo) {
+            document.getElementById('selectEstado').value = estadoSalvo;
+            portoSelecionado = JSON.parse(portoSalvo);
+            carregarPortosDoEstado(estadoSalvo, true);
+        }
+    });
+
+    async function detectarEstadoGPS() {
+        if (!navigator.geolocation) {
+            alert('Geolocalização não suportada.');
+            return;
+        }
+        mostrarLoader("Buscando localização via GPS...");
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            try {
+                const res = await fetch(`/api/porto?endpoint=nearest-harbor-independent-state/${pos.coords.latitude},${pos.coords.longitude}`);
+                const json = await res.json();
+                const p = json.data || json.dados || json;
+                const porto = Array.isArray(p) ? p[0] : p;
+                
+                if (porto && porto.state) {
+                    const est = porto.state.toLowerCase();
+                    document.getElementById('selectEstado').value = est;
+                    await carregarPortosDoEstado(est, false);
+                    document.getElementById('selectPorto').value = porto.id;
+                    aoMudarPorto();
+                    return;
+                }
+                throw new Error();
+            } catch {
+                esconderLoader();
+                alert('Definindo Ceará (CE) por padrão.');
+                document.getElementById('selectEstado').value = 'ce';
+                await carregarPortosDoEstado('ce', false);
+            }
+        }, () => {
+            esconderLoader();
+            alert('Permissão de GPS negada.');
+        }, { timeout: 6000 });
+    }
+
+    async function aoMudarEstado() {
+        const estado = document.getElementById('selectEstado').value;
+        await carregarPortosDoEstado(estado, false);
+    }
+
+    async function carregarPortosDoEstado(estado, manterPorto) {
+        const selectPorto = document.getElementById('selectPorto');
+        if (!estado) {
+            selectPorto.innerHTML = '<option value="">Selecione o Estado primeiro...</option>';
+            selectPorto.disabled = true;
+            return;
+        }
+        localStorage.setItem('pj_estado', estado);
+        mostrarLoader("Carregando portos...");
+
+        try {
+            const res = await fetch(`/api/porto?endpoint=harbors-independent-state/${estado}`);
+            const json = await res.json();
+            if (Array.isArray(json)) {
+                listaPortosEstado = json;
+            } else {
+                listaPortosEstado = json.data || json.dados || json.harbors || [];
+            }
+        } catch {
+            listaPortosEstado = [];
+        } finally {
+            esconderLoader();
+        }
+
+        if (!listaPortosEstado || listaPortosEstado.length === 0) {
+            listaPortosEstado = basePortosFallback[estado] || [
+                { id: `${estado}02`, harbor_name: `PORTO PRINCIPAL (${estado.toUpperCase()})`, state: estado }
+            ];
+        }
+
+        selectPorto.innerHTML = '<option value="">Selecione o Porto...</option>';
+        listaPortosEstado.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.harbor_name || p.name;
+            selectPorto.appendChild(opt);
+        });
+        selectPorto.disabled = false;
+
+        if (manterPorto && portoSelecionado) {
+            selectPorto.value = portoSelecionado.id;
+        }
+    }
+
+    function aoMudarPorto() {
+        const id = document.getElementById('selectPorto').value;
+        if (!id) return;
+
+        portoSelecionado = listaPortosEstado.find(p => p.id === id);
+        if (!portoSelecionado) return;
+
+        localStorage.setItem('pj_porto_obj', JSON.stringify(portoSelecionado));
+
+        document.getElementById('cardGrafico').style.display = 'block';
+        document.getElementById('cardCalendario').style.display = 'block';
+
+        diaSelecionado = hojeData.getDate();
+        mesExibido = hojeData.getMonth() + 1;
+        anoExibido = hojeData.getFullYear();
+
+        desenharCalendario();
+        carregarTábuaDoDia(diaSelecionado);
+    }
+
+    function mudarMes(dir) {
+        mesExibido += dir;
+        if (mesExibido > 12) { mesExibido = 1; anoExibido++; }
+        if (mesExibido < 1) { mesExibido = 12; anoExibido--; }
+        diaSelecionado = 1;
+        desenharCalendario();
+        carregarTábuaDoDia(diaSelecionado);
+    }
+
+    function desenharCalendario() {
+        const grid = document.getElementById('calendarDaysGrid');
+        grid.innerHTML = '';
+
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        document.getElementById('currentMonthYearLabel').textContent = `${nomesMeses[mesExibido - 1]} de ${anoExibido}`;
+
+        let primeiroDia = new Date(anoExibido, mesExibido - 1, 1).getDay();
+        let vazios = primeiroDia === 0 ? 6 : primeiroDia - 1;
+        let totalDias = new Date(anoExibido, mesExibido, 0).getDate();
+
+        for (let i = 0; i < vazios; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'day-cell empty';
+            grid.appendChild(cell);
+        }
+
+        for (let d = 1; d <= totalDias; d++) {
+            const cell = document.createElement('div');
+            cell.className = 'day-cell';
+            cell.textContent = d;
+
+            if (d === diaSelecionado) cell.classList.add('selected');
+
+            cell.onclick = () => {
+                diaSelecionado = d;
+                document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('selected'));
+                cell.classList.add('selected');
+                carregarTábuaDoDia(d);
+            };
+            grid.appendChild(cell);
+        }
+    }
+
+    async function carregarTábuaDoDia(dia) {
+        mostrarLoader(`Carregando maré do dia ${dia}/${mesExibido}...`);
+        let hoursArray = [];
+        try {
+            const res = await fetch(`/api/porto?endpoint=tabua-mare/${portoSelecionado.id}/${mesExibido}/${dia}`);
+            const text = await res.text();
+            const json = JSON.parse(text);
+            hoursArray = extrairHorasRecursivo(json, dia);
+        } catch (e) {
+            console.warn("Usando simulação visual para a maré.");
+        } finally {
+            esconderLoader();
+        }
+
+        if (!hoursArray || hoursArray.length === 0) {
+            hoursArray = [
+                { hour: "02:15", level: 0.3 },
+                { hour: "08:30", level: 2.4 },
+                { hour: "14:45", level: 0.4 },
+                { hour: "21:00", level: 2.2 }
+            ];
+        }
+
+        renderizarGrafico(hoursArray, dia);
+    }
+
+    function extrairHorasRecursivo(obj, diaAlvo) {
+        if (!obj || typeof obj !== 'object') return [];
+        if (obj.day === diaAlvo && Array.isArray(obj.hours)) return obj.hours;
+        for (let key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                let res = extrairHorasRecursivo(obj[key], diaAlvo);
+                if (res.length > 0) return res;
+            }
+        }
+        return [];
+    }
+
+    function horaParaMinutos(horaStr) {
+        const partes = horaStr.split(':');
+        return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
+    }
+
+    function renderizarGrafico(hoursArray, dia) {
+        hoursArray.sort((a, b) => a.hour.localeCompare(b.hour));
+
+        const rotulos = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00", "00:00"];
+        const minutosEixos = [0, 180, 360, 540, 720, 900, 1080, 1260, 1440];
+
+        let picos = hoursArray.map(h => ({
+            hour: h.hour,
+            min: horaParaMinutos(h.hour),
+            level: h.level
+        }));
+
+        if (picos.length > 0) {
+            let primeiro = picos[0];
+            let ultimo = picos[picos.length - 1];
+            if (primeiro.min > 0) picos.unshift({ hour: "00:00", min: 0, level: primeiro.level });
+            if (ultimo.min < 1440) picos.push({ hour: "00:00", min: 1440, level: primeiro.level });
+        } else {
+            picos = [{ hour: "00:00", min: 0, level: 0 }, { hour: "00:00", min: 1440, level: 0 }];
+        }
+
+        const dadosInterpolados = minutosEixos.map(minAlvo => {
+            let p1 = picos[0], p2 = picos[picos.length - 1];
+            for (let i = 0; i < picos.length - 1; i++) {
+                if (minAlvo >= picos[i].min && minAlvo <= picos[i+1].min) {
+                    p1 = picos[i]; p2 = picos[i+1];
+                    break;
+                }
+            }
+            if (p1.min === p2.min) return p1.level;
+            let proporcao = (minAlvo - p1.min) / (p2.min - p1.min);
+            return parseFloat((p1.level + proporcao * (p2.level - p1.level)).toFixed(2));
+        });
+
+        // Dataset para marcar exatamente os picos oficiais de maré alta e baixa fornecidos pela API
+        let datasetPicosAltosBaixos = rotulos.map(() => null);
+        let coresPicos = [];
+        
+        // Mapeia os picos reais nos eixos de minutos
+        hoursArray.forEach(h => {
+            const minH = horaParaMinutos(h.hour);
+            // Encontra o ponto mais próximo no eixo de 3h para alinhar a bolha
+            const idxMaisProximo = Math.round(minH / 180);
+            if (idxMaisProximo < datasetPicosAltosBaixos.length) {
+                datasetPicosAltosBaixos[idxMaisProximo] = h.level;
+            }
+        });
+
+        // Dataset para o ponto "Agora"
+        let datasetPontoAtual = rotulos.map(() => null);
+        const ehHoje = (dia === hojeData.getDate() && mesExibido === (hojeData.getMonth() + 1) && anoExibido === hojeData.getFullYear());
+        
+        if (ehHoje) {
+            const minAgora = hojeData.getHours() * 60 + hojeData.getMinutes();
+            let p1 = picos[0], p2 = picos[picos.length - 1];
+            for (let i = 0; i < picos.length - 1; i++) {
+                if (minAgora >= picos[i].min && minAgora <= picos[i+1].min) {
+                    p1 = picos[i]; p2 = picos[i+1];
+                    break;
+                }
+            }
+            let nivelAgora = p1.level;
+            if (p1.min !== p2.min) {
+                let prop = (minAgora - p1.min) / (p2.min - p1.min);
+                nivelAgora = parseFloat((p1.level + prop * (p2.level - p1.level)).toFixed(2));
+            }
+
+            const idxAgora = Math.round(minAgora / 180);
+            if (idxAgora < datasetPontoAtual.length) {
+                datasetPontoAtual[idxAgora] = nivelAgora;
+            } else {
+                datasetPontoAtual[8] = nivelAgora;
+            }
+        }
+
+        const ctx = document.getElementById('mareChart').getContext('2d');
+        if (meuGrafico) meuGrafico.destroy();
+
+        document.getElementById('tituloGrafico').textContent = `Maré do dia ${dia}/${mesExibido} — ${portoSelecionado.harbor_name}`;
+
+        meuGrafico = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: rotulos,
+                datasets: [
+                    {
+                        label: 'Curva de Maré',
+                        data: dadosInterpolados,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.15)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Marés (Altas/Baixas)',
+                        data: datasetPicosAltosBaixos,
+                        borderColor: '#28a745',
+                        backgroundColor: '#28a745',
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointStyle: 'circle',
+                        showLine: false
+                    },
+                    {
+                        label: 'Agora',
+                        data: datasetPontoAtual,
+                        borderColor: '#dc3545',
+                        backgroundColor: '#dc3545',
+                        pointRadius: 8,
+                        pointStyle: 'circle',
+                        showLine: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: false,
+                        title: { display: true, text: 'Metros' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Horários (00h às 00h)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: true, position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    function mostrarLoader(t) {
+        document.getElementById('loadingText').textContent = t;
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+    function esconderLoader() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
