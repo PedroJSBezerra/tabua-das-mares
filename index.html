@@ -4,25 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PJ Mobile - Tábua de Marés</title>
+    <!-- Chart.js Core -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary: #007bff;
-            --primary-dark: #0056b3;
-            --bg-color: #f4f7f6;
-            --card-bg: #ffffff;
-            --text-color: #333;
-            --border-color: #ddd;
+            --bg-body: #0b0e11;
+            --bg-card: #1e2329;
+            --text-main: #eaecef;
+            --text-muted: #848e9c;
+            --primary: #0ecb81;
+            --primary-dark: #067644;
+            --border-color: #2b313a;
+            --accent: #f0b90b;
+            --danger: #ef4444;
         }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg-body);
+            color: var(--text-main);
             margin: 0;
             padding: 10px;
             display: flex;
             justify-content: center;
+            touch-action: pan-x pan-y;
         }
+
         .main-container {
             width: 100%;
             max-width: 500px;
@@ -30,37 +37,166 @@
             flex-direction: column;
             gap: 12px;
         }
+
         .card {
-            background: var(--card-bg);
+            background: var(--bg-card);
             padding: 14px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
         }
-        h2 { font-size: 16px; margin: 0 0 10px 0; text-align: center; color: #222; }
+
+        .card.fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            z-index: 9999 !important;
+            border-radius: 0 !important;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            padding: 15px;
+        }
+        .card.fullscreen .chart-wrapper-sticky {
+            flex: 1;
+            height: auto !important;
+        }
+        .card.fullscreen .chart-inner-container {
+            height: 100% !important;
+        }
+
+        h2 { 
+            font-size: 16px; 
+            margin: 0 0 10px 0; 
+            text-align: center; 
+            color: var(--accent); 
+        }
+
         .form-group { margin-bottom: 10px; }
-        label { display: block; font-size: 11px; font-weight: bold; color: #666; margin-bottom: 4px; }
+        label { display: block; font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 4px; }
+        
         select, .btn {
             width: 100%;
             padding: 10px;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 14px;
             box-sizing: border-box;
+            outline: none;
         }
-        select { border: 1px solid var(--border-color); background: #fff; }
+        
+        select { 
+            border: 1px solid var(--border-color); 
+            background: #12161c; 
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
         .btn {
             background-color: var(--primary);
-            color: white;
+            color: #0b0e11;
             border: none;
             font-weight: bold;
             cursor: pointer;
             text-align: center;
             margin-top: 4px;
         }
-        .btn:active { background-color: var(--primary-dark); }
-        .btn-gps { background-color: #28a745; }
-        .btn-gps:active { background-color: #1e7e34; }
+        .btn:active { background-color: var(--primary-dark); color: #fff; }
+        .btn-gps { background-color: #38bdf8; color: #0b0e11; }
         
-        .chart-container { position: relative; height: 260px; width: 100%; }
+        /* Container Flex para manter o Eixo Y fixo na esquerda */
+        .chart-wrapper-sticky {
+            display: flex;
+            width: 100%;
+            position: relative;
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .axis-y-fixed {
+            width: 50px;
+            height: 280px;
+            background: var(--bg-card);
+            z-index: 10;
+            border-right: 1px solid var(--border-color);
+            flex-shrink: 0;
+            pointer-events: none;
+        }
+
+        .touch-scroll-wrapper {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .touch-scroll-wrapper::-webkit-scrollbar { display: none; }
+
+        .chart-inner-container {
+            width: 3200px; /* Largura aumentada para acomodar todas as horas visivelmente */
+            height: 280px;
+        }
+
+        .chart-footer-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+        }
+
+        .chart-legend-custom {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .chart-actions-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action-custom {
+            background-color: #2b313a;
+            color: var(--accent);
+            border: 1px solid var(--border-color);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-action-custom:hover { background-color: #3a414b; }
+
+        .zoom-controls {
+            display: flex;
+            gap: 4px;
+        }
+
         .calendar-header {
             display: flex;
             justify-content: space-between;
@@ -68,44 +204,50 @@
             margin-bottom: 10px;
         }
         .calendar-header button {
-            background: #e2e8f0;
+            background: #2b313a;
             border: none;
+            color: var(--text-main);
             padding: 6px 12px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-weight: bold;
             cursor: pointer;
             font-size: 12px;
         }
+        .calendar-header button:hover { background: #3a414b; }
+
         .weekdays {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             text-align: center;
             font-weight: bold;
             font-size: 11px;
-            color: #666;
+            color: var(--text-muted);
             margin-bottom: 6px;
         }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        
         .day-cell {
             aspect-ratio: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: #f8fafc;
+            background: #12161c;
             border: 1px solid var(--border-color);
             border-radius: 6px;
             font-size: 12px;
+            color: var(--text-muted);
             cursor: pointer;
             user-select: none;
         }
-        .day-cell.selected { background: var(--primary) !important; color: white !important; font-weight: bold; }
+        .day-cell.selected { background: var(--primary) !important; color: #0b0e11 !important; font-weight: bold; }
         .day-cell.empty { background: transparent; border: none; cursor: default; }
+
         #loadingOverlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.7);
             color: white;
             justify-content: center;
             align-items: center;
@@ -162,16 +304,39 @@
     </div>
 
     <div class="card" id="cardGrafico" style="display: none;">
-        <h3 id="tituloGrafico" style="font-size: 13px; margin: 0 0 8px 0; text-align: center; color: #555;">Gráfico de Maré</h3>
-        <div class="chart-container">
-            <canvas id="mareChart"></canvas>
+        <h3 id="tituloGrafico" style="font-size: 13px; margin: 0 0 8px 0; text-align: center; color: var(--text-main);">Gráfico de Maré</h3>
+        
+        <div class="chart-wrapper-sticky">
+            <canvas id="axisYCanvas" class="axis-y-fixed"></canvas>
+            <div class="touch-scroll-wrapper" id="scrollContainer">
+                <div class="chart-inner-container" id="innerContainer">
+                    <canvas id="mareChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-footer-panel">
+            <div class="chart-legend-custom">
+                <div class="legend-item"><div class="legend-color" style="background:#0ecb81;"></div> Curva de Maré</div>
+                <div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> Ponto Atual (Agora)</div>
+            </div>
+            
+            <div class="chart-actions-row">
+                <button class="btn-action-custom" onclick="centralizarNaHoraAtual()">🎯 Agora</button>
+                <div class="zoom-controls">
+                    <button class="btn-action-custom" onclick="ajustarZoomHorizontal(1.25)" title="Comprimir Gráfico">🔍- Comprimir</button>
+                    <button class="btn-action-custom" onclick="ajustarZoomHorizontal(0.8)" title="Expandir Gráfico">🔍+ Expandir</button>
+                    <button class="btn-action-custom" onclick="resetarZoomHorizontal()" title="Resetar Zoom">🔄 Reset</button>
+                </div>
+                <button class="btn-action-custom" id="btnFullscreen" onclick="alternarTelaCheia()">⛶ Tela Cheia</button>
+            </div>
         </div>
     </div>
 
     <div class="card" id="cardCalendario" style="display: none;">
         <div class="calendar-header">
             <button onclick="mudarMes(-1)">◀ Mês</button>
-            <span id="currentMonthYearLabel" style="font-weight: bold; font-size: 13px;">Mês Ano</span>
+            <span id="currentMonthYearLabel" style="font-weight: bold; font-size: 13px; color: var(--text-main);">Mês Ano</span>
             <button onclick="mudarMes(1)">Mês ▶</button>
         </div>
 
@@ -206,20 +371,22 @@
     let meuGrafico = null;
     let portoSelecionado = null;
     let listaPortosEstado = [];
+    let ultimoIndiceGlobalAtual = -1;
+    let ultimoTotalRotulos = 1;
+    let larguraGraficoAtual = 3200;
     
     const hojeData = new Date();
     let anoExibido = hojeData.getFullYear();
     let mesExibido = hojeData.getMonth() + 1;
     let diaSelecionado = hojeData.getDate();
 
+    const cacheTabuas = {};
+
     document.addEventListener('DOMContentLoaded', () => {
-        const estadoSalvo = localStorage.getItem('pj_estado');
-        const portoSalvo = localStorage.getItem('pj_porto_obj');
-        if (estadoSalvo && portoSalvo) {
-            document.getElementById('selectEstado').value = estadoSalvo;
-            portoSelecionado = JSON.parse(portoSalvo);
-            carregarPortosDoEstado(estadoSalvo, true);
-        }
+        document.getElementById('selectEstado').value = "";
+        const selectPorto = document.getElementById('selectPorto');
+        selectPorto.innerHTML = '<option value="">Selecione o Estado primeiro...</option>';
+        selectPorto.disabled = true;
     });
 
     async function detectarEstadoGPS() {
@@ -230,7 +397,7 @@
         mostrarLoader("Buscando localização via GPS...");
         navigator.geolocation.getCurrentPosition(async (pos) => {
             try {
-                const res = await fetch(`/api/porto?endpoint=nearest-harbor-independent-state/${pos.coords.latitude},${pos.coords.longitude}`);
+                const res = await fetch(`https://tabuamare.api.br/api/v1/nearest-harbor-independent-state/${pos.coords.latitude},${pos.coords.longitude}`);
                 const json = await res.json();
                 const p = json.data || json.dados || json;
                 const porto = Array.isArray(p) ? p[0] : p;
@@ -258,6 +425,8 @@
 
     async function aoMudarEstado() {
         const estado = document.getElementById('selectEstado').value;
+        document.getElementById('cardGrafico').style.display = 'none';
+        document.getElementById('cardCalendario').style.display = 'none';
         await carregarPortosDoEstado(estado, false);
     }
 
@@ -268,18 +437,26 @@
             selectPorto.disabled = true;
             return;
         }
-        localStorage.setItem('pj_estado', estado);
+        
         mostrarLoader("Carregando portos...");
 
         try {
-            const res = await fetch(`/api/porto?endpoint=harbors-independent-state/${estado}`);
+            const res = await fetch(`https://tabuamare.api.br/api/v1/harbors-independent-state/${estado}`);
             const json = await res.json();
+            
             if (Array.isArray(json)) {
                 listaPortosEstado = json;
+            } else if (json && Array.isArray(json.data)) {
+                listaPortosEstado = json.data;
+            } else if (json && Array.isArray(json.dados)) {
+                listaPortosEstado = json.dados;
+            } else if (json && Array.isArray(json.harbors)) {
+                listaPortosEstado = json.harbors;
             } else {
-                listaPortosEstado = json.data || json.dados || json.harbors || [];
+                listaPortosEstado = [];
             }
-        } catch {
+        } catch(err) {
+            console.warn("Erro ao buscar portos da API, usando fallback:", err);
             listaPortosEstado = [];
         } finally {
             esconderLoader();
@@ -295,24 +472,22 @@
         listaPortosEstado.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.textContent = p.harbor_name || p.name;
+            opt.textContent = p.harbor_name || p.name || p.harbor || `Porto ${p.id}`;
             selectPorto.appendChild(opt);
         });
+        selectPorto.value = "";
         selectPorto.disabled = false;
-
-        if (manterPorto && portoSelecionado) {
-            selectPorto.value = portoSelecionado.id;
-        }
     }
 
     function aoMudarPorto() {
         const id = document.getElementById('selectPorto').value;
-        if (!id) return;
+        if (!id) {
+            document.getElementById('cardGrafico').style.display = 'none';
+            document.getElementById('cardCalendario').style.display = 'none';
+            return;
+        }
 
-        portoSelecionado = listaPortosEstado.find(p => p.id === id);
-        if (!portoSelecionado) return;
-
-        localStorage.setItem('pj_porto_obj', JSON.stringify(portoSelecionado));
+        portoSelecionado = listaPortosEstado.find(p => p.id === id) || { id: id, harbor_name: "Porto Selecionado" };
 
         document.getElementById('cardGrafico').style.display = 'block';
         document.getElementById('cardCalendario').style.display = 'block';
@@ -322,7 +497,7 @@
         anoExibido = hojeData.getFullYear();
 
         desenharCalendario();
-        carregarTábuaDoDia(diaSelecionado);
+        carregarTabua4Dias(diaSelecionado);
     }
 
     function mudarMes(dir) {
@@ -331,7 +506,7 @@
         if (mesExibido < 1) { mesExibido = 12; anoExibido--; }
         diaSelecionado = 1;
         desenharCalendario();
-        carregarTábuaDoDia(diaSelecionado);
+        carregarTabua4Dias(diaSelecionado);
     }
 
     function desenharCalendario() {
@@ -362,24 +537,35 @@
                 diaSelecionado = d;
                 document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('selected'));
                 cell.classList.add('selected');
-                carregarTábuaDoDia(d);
+                carregarTabua4Dias(d);
             };
             grid.appendChild(cell);
         }
     }
 
-    async function carregarTábuaDoDia(dia) {
-        mostrarLoader(`Carregando maré do dia ${dia}/${mesExibido}...`);
+    async function buscarHorasComCache(idPorto, mAlvo, dAlvo, aAlvo) {
+        const cacheKey = `${idPorto}_${aAlvo}_${mAlvo}_${dAlvo}`;
+        
+        if (cacheTabuas[cacheKey]) return cacheTabuas[cacheKey];
+
+        const localSaved = localStorage.getItem(cacheKey);
+        if (localSaved) {
+            try {
+                const parsed = JSON.parse(localSaved);
+                cacheTabuas[cacheKey] = parsed;
+                return parsed;
+            } catch(e) {}
+        }
+
         let hoursArray = [];
         try {
-            const res = await fetch(`/api/porto?endpoint=tabua-mare/${portoSelecionado.id}/${mesExibido}/${dia}`);
-            const text = await res.text();
-            const json = JSON.parse(text);
-            hoursArray = extrairHorasRecursivo(json, dia);
-        } catch (e) {
-            console.warn("Usando simulação visual para a maré.");
-        } finally {
-            esconderLoader();
+            const res = await fetch(`https://tabuamare.api.br/api/v1/tabua-mare/${idPorto}/${mAlvo}/${dAlvo}`);
+            if (res.ok) {
+                const json = await res.json();
+                hoursArray = extrairHorasRecursivo(json, dAlvo);
+            }
+        } catch(err) {
+            console.warn(`Erro ao buscar dados da API para ${dAlvo}/${mAlvo}`);
         }
 
         if (!hoursArray || hoursArray.length === 0) {
@@ -391,105 +577,260 @@
             ];
         }
 
-        renderizarGrafico(hoursArray, dia);
+        cacheTabuas[cacheKey] = hoursArray;
+        try {
+            localStorage.setItem(cacheKey, JSON.stringify(hoursArray));
+        } catch(e) {}
+
+        return hoursArray;
+    }
+
+    async function carregarTabua4Dias(diaBase) {
+        const temTudoCache = [ -1, 0, 1, 2 ].every(offset => {
+            let dObj = new Date(anoExibido, mesExibido - 1, diaBase + offset);
+            return cacheTabuas[`${portoSelecionado.id}_${dObj.getFullYear()}_${dObj.getMonth() + 1}_${dObj.getDate()}`] || localStorage.getItem(`${portoSelecionado.id}_${dObj.getFullYear()}_${dObj.getMonth() + 1}_${dObj.getDate()}`);
+        });
+
+        if (!temTudoCache) {
+            mostrarLoader(`Carregando dados precisos (4 dias)...`);
+        }
+        
+        let rotulosGlobais = [];
+        let dadosGlobais = [];
+        let indiceGlobalAtual = -1;
+        let menorDiferencaMinutos = Infinity;
+
+        const agora = new Date();
+        const minAtualTotal = agora.getHours() * 60 + agora.getMinutes();
+
+        try {
+            let diasDados = [];
+            for (let offset = -1; offset <= 2; offset++) {
+                let dObj = new Date(anoExibido, mesExibido - 1, diaBase + offset);
+                let dAlvo = dObj.getDate();
+                let mAlvo = dObj.getMonth() + 1;
+                let aAlvo = dObj.getFullYear();
+
+                let hoursArray = await buscarHorasComCache(portoSelecionado.id, mAlvo, dAlvo, aAlvo);
+                hoursArray.sort((a, b) => a.hour.localeCompare(b.hour));
+                
+                diasDados.push({
+                    offset, dAlvo, mAlvo, aAlvo, hoursArray
+                });
+            }
+
+            diasDados.forEach((diaInfo, dIdx) => {
+                let { offset, dAlvo, mAlvo, aAlvo, hoursArray } = diaInfo;
+                let baseMinutosDia = (dIdx - 1) * 1440;
+
+                // Gerando dados pontuais de hora em hora (0 a 23)
+                let pontosCompletosDia = [];
+                
+                for (let h = 0; h < 24; h++) {
+                    let minHora = h * 60;
+                    // Interpolação para obter o nível exato na hora cheia
+                    let levelCalc = calcularNivelParaMinuto(minHora, hoursArray);
+                    pontosCompletosDia.push({ min: minHora, level: levelCalc, horaExata: h });
+                }
+
+                pontosCompletosDia.forEach(pt => {
+                    rotulosGlobais.push(`${dAlvo}/${mAlvo} - ${pt.horaExata}`);
+                    dadosGlobais.push(pt.level);
+
+                    const ehO_DiaAtual = (dAlvo === agora.getDate() && mAlvo === (agora.getMonth() + 1) && aAlvo === agora.getFullYear());
+                    if (ehO_DiaAtual) {
+                        let diff = Math.abs(pt.min - minAtualTotal);
+                        if (diff < menorDiferencaMinutos) {
+                            menorDiferencaMinutos = diff;
+                            indiceGlobalAtual = rotulosGlobais.length - 1;
+                        }
+                    }
+                });
+            });
+
+        } catch (e) {
+            console.error(e);
+        } finally {
+            esconderLoader();
+        }
+
+        ultimoIndiceGlobalAtual = indiceGlobalAtual;
+        ultimoTotalRotulos = rotulosGlobais.length;
+
+        renderizarGrafico4Dias(rotulosGlobais, dadosGlobais, indiceGlobalAtual);
+    }
+
+    function calcularNivelParaMinuto(minAlvo, hoursArray) {
+        if (!hoursArray || hoursArray.length === 0) return 1.0;
+        
+        let pAnterior = null;
+        let pProximo = null;
+
+        for (let i = 0; i < hoursArray.length; i++) {
+            let m = horaParaMinutos(hoursArray[i].hour);
+            if (m <= minAlvo) pAnterior = { min: m, level: hoursArray[i].level };
+            if (m >= minAlvo && !pProximo) pProximo = { min: m, level: hoursArray[i].level };
+        }
+
+        if (!pAnterior) return hoursArray[0].level;
+        if (!pProximo) return hoursArray[hoursArray.length - 1].level;
+        if (pAnterior.min === pProximo.min) return pAnterior.level;
+
+        let prop = (minAlvo - pAnterior.min) / (pProximo.min - pAnterior.min);
+        let levelInter = pAnterior.level + (pProximo.level - pAnterior.level) * (1 - Math.cos(prop * Math.PI)) / 2;
+        return parseFloat(levelInter.toFixed(2));
     }
 
     function extrairHorasRecursivo(obj, diaAlvo) {
         if (!obj || typeof obj !== 'object') return [];
-        if (obj.day === diaAlvo && Array.isArray(obj.hours)) return obj.hours;
+        if (obj.day == diaAlvo && Array.isArray(obj.hours)) return obj.hours;
         for (let key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
                 let res = extrairHorasRecursivo(obj[key], diaAlvo);
-                if (res.length > 0) return res;
+                if (res && res.length > 0) return res;
             }
         }
         return [];
     }
 
     function horaParaMinutos(horaStr) {
+        if (!horaStr) return 0;
         const partes = horaStr.split(':');
         return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
     }
 
-    function renderizarGrafico(hoursArray, dia) {
-        hoursArray.sort((a, b) => a.hour.localeCompare(b.hour));
-
-        const rotulos = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00", "00:00"];
-        const minutosEixos = [0, 180, 360, 540, 720, 900, 1080, 1260, 1440];
-
-        let picos = hoursArray.map(h => ({
-            hour: h.hour,
-            min: horaParaMinutos(h.hour),
-            level: h.level
-        }));
-
-        if (picos.length > 0) {
-            let primeiro = picos[0];
-            let ultimo = picos[picos.length - 1];
-            if (primeiro.min > 0) picos.unshift({ hour: "00:00", min: 0, level: primeiro.level });
-            if (ultimo.min < 1440) picos.push({ hour: "00:00", min: 1440, level: primeiro.level });
-        } else {
-            picos = [{ hour: "00:00", min: 0, level: 0 }, { hour: "00:00", min: 1440, level: 0 }];
-        }
-
-        const dadosInterpolados = minutosEixos.map(minAlvo => {
-            let p1 = picos[0], p2 = picos[picos.length - 1];
-            for (let i = 0; i < picos.length - 1; i++) {
-                if (minAlvo >= picos[i].min && minAlvo <= picos[i+1].min) {
-                    p1 = picos[i]; p2 = picos[i+1];
-                    break;
-                }
-            }
-            if (p1.min === p2.min) return p1.level;
-            let proporcao = (minAlvo - p1.min) / (p2.min - p1.min);
-            return parseFloat((p1.level + proporcao * (p2.level - p1.level)).toFixed(2));
-        });
-
-        // Dataset para marcar exatamente os picos oficiais de maré alta e baixa fornecidos pela API
-        let datasetPicosAltosBaixos = rotulos.map(() => null);
-        let coresPicos = [];
-        
-        // Mapeia os picos reais nos eixos de minutos
-        hoursArray.forEach(h => {
-            const minH = horaParaMinutos(h.hour);
-            // Encontra o ponto mais próximo no eixo de 3h para alinhar a bolha
-            const idxMaisProximo = Math.round(minH / 180);
-            if (idxMaisProximo < datasetPicosAltosBaixos.length) {
-                datasetPicosAltosBaixos[idxMaisProximo] = h.level;
-            }
-        });
-
-        // Dataset para o ponto "Agora"
-        let datasetPontoAtual = rotulos.map(() => null);
-        const ehHoje = (dia === hojeData.getDate() && mesExibido === (hojeData.getMonth() + 1) && anoExibido === hojeData.getFullYear());
-        
-        if (ehHoje) {
-            const minAgora = hojeData.getHours() * 60 + hojeData.getMinutes();
-            let p1 = picos[0], p2 = picos[picos.length - 1];
-            for (let i = 0; i < picos.length - 1; i++) {
-                if (minAgora >= picos[i].min && minAgora <= picos[i+1].min) {
-                    p1 = picos[i]; p2 = picos[i+1];
-                    break;
-                }
-            }
-            let nivelAgora = p1.level;
-            if (p1.min !== p2.min) {
-                let prop = (minAgora - p1.min) / (p2.min - p1.min);
-                nivelAgora = parseFloat((p1.level + prop * (p2.level - p1.level)).toFixed(2));
-            }
-
-            const idxAgora = Math.round(minAgora / 180);
-            if (idxAgora < datasetPontoAtual.length) {
-                datasetPontoAtual[idxAgora] = nivelAgora;
+    function centralizarNaHoraAtual() {
+        const wrapper = document.getElementById('scrollContainer');
+        if (wrapper) {
+            const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+            if (ultimoIndiceGlobalAtual !== -1 && maxScroll > 0) {
+                const proporcao = ultimoIndiceGlobalAtual / (ultimoTotalRotulos - 1);
+                const posicaoAlvo = (maxScroll * proporcao) - (wrapper.clientWidth * 0.1);
+                
+                wrapper.scrollTo({
+                    left: Math.max(0, Math.min(posicaoAlvo, maxScroll)),
+                    behavior: 'smooth'
+                });
             } else {
-                datasetPontoAtual[8] = nivelAgora;
+                wrapper.scrollTo({
+                    left: maxScroll * 0.25,
+                    behavior: 'smooth'
+                });
             }
         }
+    }
 
+    function ajustarZoomHorizontal(fator) {
+        larguraGraficoAtual = larguraGraficoAtual * fator;
+        if (larguraGraficoAtual < 1600) larguraGraficoAtual = 1600;
+        if (larguraGraficoAtual > 8000) larguraGraficoAtual = 8000;
+        
+        document.getElementById('innerContainer').style.width = larguraGraficoAtual + 'px';
+        if (meuGrafico) meuGrafico.resize();
+        
+        setTimeout(() => centralizarNaHoraAtual(), 50);
+    }
+
+    function resetarZoomHorizontal() {
+        larguraGraficoAtual = 3200;
+        document.getElementById('innerContainer').style.width = larguraGraficoAtual + 'px';
+        if (meuGrafico) meuGrafico.resize();
+        
+        setTimeout(() => centralizarNaHoraAtual(), 50);
+    }
+
+    function alternarTelaCheia() {
+        const card = document.getElementById('cardGrafico');
+        const btn = document.getElementById('btnFullscreen');
+        card.classList.toggle('fullscreen');
+        
+        if (card.classList.contains('fullscreen')) {
+            btn.textContent = '❌ Fechar Cheia';
+            document.getElementById('innerContainer').style.width = '4500px';
+        } else {
+            btn.textContent = '⛶ Tela Cheia';
+            document.getElementById('innerContainer').style.width = larguraGraficoAtual + 'px';
+        }
+        if (meuGrafico) meuGrafico.resize();
+
+        setTimeout(() => centralizarNaHoraAtual(), 100);
+    }
+
+    const verticalLinePlugin = {
+        id: 'verticalLinePlugin',
+        afterDraw: (chart) => {
+            if (ultimoIndiceGlobalAtual === -1) return;
+            const meta = chart.getDatasetMeta(0);
+            if (!meta || !meta.data || !meta.data[ultimoIndiceGlobalAtual]) return;
+
+            const ponto = meta.data[ultimoIndiceGlobalAtual];
+            const puntoX = ponto.x;
+            const puntoY = ponto.y;
+            const topY = chart.chartArea.top;
+            const bottomY = chart.chartArea.bottom;
+            const ctx = chart.ctx;
+            const valorAtual = chart.data.datasets[0].data[ultimoIndiceGlobalAtual];
+
+            ctx.save();
+            
+            // 1. Linha vertical pontilhada
+            ctx.beginPath();
+            ctx.moveTo(puntoX, topY);
+            ctx.lineTo(puntoX, bottomY);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ef4444';
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+
+            // 2. Halo brilhante e ponto vermelho
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(puntoX, puntoY, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(puntoX, puntoY, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ef4444';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+
+            // 3. Badge explicativo
+            const text = `${valorAtual}m`;
+            ctx.font = 'bold 11px sans-serif';
+            const textWidth = ctx.measureText(text).width;
+            const badgePadding = 6;
+            const badgeWidth = textWidth + (badgePadding * 2);
+            const badgeHeight = 18;
+            
+            let badgeY = puntoY - 26;
+            if (badgeY < topY + 5) { badgeY = puntoY + 12; }
+
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(puntoX - (badgeWidth / 2), badgeY, badgeWidth, badgeHeight, 4);
+            } else {
+                ctx.rect(puntoX - (badgeWidth / 2), badgeY, badgeWidth, badgeHeight);
+            }
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, puntoX, badgeY + (badgeHeight / 2));
+
+            ctx.restore();
+        }
+    };
+
+    function renderizarGrafico4Dias(rotulos, dados, indiceGlobalAtual) {
         const ctx = document.getElementById('mareChart').getContext('2d');
         if (meuGrafico) meuGrafico.destroy();
 
-        document.getElementById('tituloGrafico').textContent = `Maré do dia ${dia}/${mesExibido} — ${portoSelecionado.harbor_name}`;
+        document.getElementById('tituloGrafico').textContent = `Tábua de Marés (Alta Precisão) — ${portoSelecionado.harbor_name}`;
 
         meuGrafico = new Chart(ctx, {
             type: 'line',
@@ -498,50 +839,103 @@
                 datasets: [
                     {
                         label: 'Curva de Maré',
-                        data: dadosInterpolados,
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.15)',
-                        borderWidth: 3,
+                        data: dados,
+                        borderColor: '#0ecb81',
+                        backgroundColor: 'rgba(14, 203, 129, 0.15)',
+                        borderWidth: 2.5,
                         fill: true,
-                        tension: 0.4,
-                        pointRadius: 0
-                    },
-                    {
-                        label: 'Marés (Altas/Baixas)',
-                        data: datasetPicosAltosBaixos,
-                        borderColor: '#28a745',
-                        backgroundColor: '#28a745',
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
-                        pointStyle: 'circle',
-                        showLine: false
-                    },
-                    {
-                        label: 'Agora',
-                        data: datasetPontoAtual,
-                        borderColor: '#dc3545',
-                        backgroundColor: '#dc3545',
-                        pointRadius: 8,
-                        pointStyle: 'circle',
-                        showLine: false
+                        tension: 0.35,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        pointHitRadius: 0
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                events: [],
                 scales: {
                     y: { 
                         beginAtZero: false,
-                        title: { display: true, text: 'Metros' }
+                        grid: { color: '#2b313a' },
+                        ticks: { display: false },
+                        title: { display: false }
                     },
                     x: {
-                        title: { display: true, text: 'Horários (00h às 00h)' }
+                        grid: { 
+                            display: true,
+                            color: '#2b313a',
+                            drawOnChartArea: true
+                        },
+                        ticks: { 
+                            color: '#848e9c', 
+                            autoSkip: false, // Força a exibição de cada hora sem ocultar
+                            maxRotation: 0,
+                            callback: function(value, index, ticks) {
+                                const labelFull = this.getLabelForValue(value);
+                                if (!labelFull) return '';
+                                const partes = labelFull.split(' - ');
+                                return partes[1] !== undefined ? partes[1] : labelFull;
+                            }
+                        },
+                        title: { display: true, text: 'Horas (0 a 23)', color: '#848e9c' }
                     }
                 },
                 plugins: {
-                    legend: { display: true, position: 'bottom' }
+                    legend: { display: false },
+                    tooltip: { enabled: false }
                 }
+            },
+            plugins: [
+                verticalLinePlugin,
+                {
+                    id: 'copyAxisYPlugin',
+                    afterRender: (chart) => {
+                        desenharEixoYFixo(chart);
+                    }
+                }
+            ]
+        });
+
+        setTimeout(() => {
+            centralizarNaHoraAtual();
+        }, 150);
+    }
+
+    function desenharEixoYFixo(chart) {
+        const axisCanvas = document.getElementById('axisYCanvas');
+        if (!axisCanvas) return;
+        const ctx = axisCanvas.getContext('2d');
+        
+        const yScale = chart.scales.y;
+        if (!yScale) return;
+
+        axisCanvas.width = 50;
+        axisCanvas.height = chart.height;
+
+        ctx.clearRect(0, 0, axisCanvas.width, axisCanvas.height);
+        
+        ctx.save();
+        ctx.fillStyle = '#848e9c';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        ctx.translate(12, chart.chartArea.top + (chart.chartArea.height / 2));
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Metros', 0, 0);
+        ctx.restore();
+
+        ctx.fillStyle = '#848e9c';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        yScale.ticks.forEach((tick, index) => {
+            const yPixel = yScale.getPixelForTick(index);
+            if (yPixel >= chart.chartArea.top && yPixel <= chart.chartArea.bottom) {
+                ctx.fillText(tick.value.toFixed(1) + 'm', 44, yPixel);
             }
         });
     }
