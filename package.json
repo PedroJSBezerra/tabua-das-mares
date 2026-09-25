@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Consulta de tábua de marés e portos",
   "scripts": {
+    "start": "servor",
     "build": "echo 'Build concluído com sucesso!'"
   },
-  "dependencies": {}
+  "dependencies": {
+    "servor": "^4.0.2"
+  }
 }

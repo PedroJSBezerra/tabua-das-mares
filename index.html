@@ -1,962 +1,1421 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PJ Mobile - Tábua de Marés</title>
-    <!-- Chart.js Core -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Maré Infinita</title>
     <style>
-        :root {
-            --bg-body: #0b0e11;
-            --bg-card: #1e2329;
-            --text-main: #eaecef;
-            --text-muted: #848e9c;
-            --primary: #0ecb81;
-            --primary-dark: #067644;
-            --border-color: #2b313a;
-            --accent: #f0b90b;
-            --danger: #ef4444;
+      :root {
+        --bg: #f6f7f9;
+        --panel: #ffffff;
+        --text: #14181f;
+        --sub: #5a6472;
+        --line1: #1d6fd6;
+        --line2: #e0733a;
+        --grid: #e2e6ec;
+        --accent: #1d6fd6;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #12151a;
+          --panel: #1a1f27;
+          --text: #e8ecf1;
+          --sub: #9aa5b3;
+          --line1: #5aa3ff;
+          --line2: #ff9b5c;
+          --grid: #2a3038;
         }
+      }
+      :root[data-theme='dark'] {
+        --bg: #12151a;
+        --panel: #1a1f27;
+        --text: #e8ecf1;
+        --sub: #9aa5b3;
+        --line1: #5aa3ff;
+        --line2: #ff9b5c;
+        --grid: #2a3038;
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+        touch-action: pan-x pan-y;
+      }
+      body {
+        touch-action: pan-x pan-y;
+        -webkit-text-size-adjust: 100%;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+        min-height: 100%;
+      }
+      header {
+        padding: 14px 16px calc(10px + env(safe-area-inset-top, 0px));
+        background: var(--panel);
+        border-bottom: 1px solid var(--grid);
+      }
+      h1 {
+        font-size: 1.05rem;
+        margin: 0 0 8px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      input[type='file'] {
+        font-size: 0.85rem;
+        color: var(--sub);
+        max-width: 100%;
+      }
+      #status {
+        font-size: 0.8rem;
+        color: var(--sub);
+        margin-top: 6px;
+        min-height: 1.1em;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            justify-content: center;
-            touch-action: pan-x pan-y;
-        }
+      /* Estilo do Passo a Passo */
+      .step-guide {
+        background: var(--panel);
+        border: 1px solid var(--grid);
+        border-radius: 10px;
+        margin: 10px 16px;
+        padding: 12px 16px;
+        font-size: 0.85rem;
+      }
+      .step-guide h3 {
+        font-size: 0.9rem;
+        margin: 0 0 8px 0;
+        color: var(--accent);
+      }
+      .step-guide ol {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--sub);
+      }
+      .step-guide li {
+        margin-bottom: 4px;
+      }
+      .step-guide a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .step-guide a:hover {
+        text-decoration: underline;
+      }
 
-        .main-container {
-            width: 100%;
-            max-width: 500px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+      #legend {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+      }
+      #legend label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+      .sw {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      #legend button.rm {
+        background: none;
+        border: none;
+        color: var(--sub);
+        cursor: pointer;
+        font-size: 0.95rem;
+        padding: 0 2px;
+        line-height: 1;
+      }
+      .row button,
+      .row a.btn-link {
+        border: 1px solid var(--grid);
+        background: var(--panel);
+        color: var(--text);
+        border-radius: 8px;
+        height: 36px;
+        padding: 0 12px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        text-decoration: none;
+      }
+      .row button:hover,
+      .row a.btn-link:hover {
+        background: var(--bg);
+      }
+      main {
+        padding: 0 8px 10px;
+      }
 
-        .card {
-            background: var(--bg-card);
-            padding: 14px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            transition: all 0.3s ease;
-        }
+      /* Container expansível para tela cheia */
+      #fullscreenContainer {
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+      }
+      #fullscreenContainer:fullscreen {
+        padding: 16px;
+        overflow-y: auto;
+        width: 100vw;
+        height: 100vh;
+      }
+      #fullscreenContainer:-webkit-full-screen {
+        padding: 16px;
+        overflow-y: auto;
+        width: 100vw;
+        height: 100vh;
+      }
 
-        .card.fullscreen {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            max-width: none !important;
-            z-index: 9999 !important;
-            border-radius: 0 !important;
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-            padding: 15px;
-        }
-        .card.fullscreen .chart-wrapper-sticky {
-            flex: 1;
-            height: auto !important;
-        }
-        .card.fullscreen .chart-inner-container {
-            height: 100% !important;
-        }
+      #wrap {
+        position: relative;
+        background: var(--panel);
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid var(--grid);
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        touch-action: none;
+        cursor: grab;
+      }
+      canvas:active {
+        cursor: grabbing;
+      }
+      #hint {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--sub);
+        padding: 8px 0 4px;
+      }
 
-        h2 { 
-            font-size: 16px; 
-            margin: 0 0 10px 0; 
-            text-align: center; 
-            color: var(--accent); 
-        }
+      /* Barra inferior com tamanho adaptado para mobile (40px) e legendas explicativas */
+      .toolbar-inferior {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .toolbar-linha {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .toolbar-inferior button,
+      .toolbar-inferior label.toggle-btn {
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid var(--grid);
+        background: var(--panel);
+        color: var(--text);
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 12px;
+        gap: 6px;
+      }
+      .toolbar-inferior button {
+        min-width: 40px;
+      }
+      .toolbar-inferior input[type='checkbox'] {
+        accent-color: var(--accent);
+        cursor: pointer;
+        margin: 0;
+        width: 16px;
+        height: 16px;
+      }
 
-        .form-group { margin-bottom: 10px; }
-        label { display: block; font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 4px; }
-        
-        select, .btn {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 14px;
-            box-sizing: border-box;
-            outline: none;
-        }
-        
-        select { 
-            border: 1px solid var(--border-color); 
-            background: #12161c; 
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        .btn {
-            background-color: var(--primary);
-            color: #0b0e11;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            text-align: center;
-            margin-top: 4px;
-        }
-        .btn:active { background-color: var(--primary-dark); color: #fff; }
-        .btn-gps { background-color: #38bdf8; color: #0b0e11; }
-        
-        /* Container Flex para manter o Eixo Y fixo na esquerda */
-        .chart-wrapper-sticky {
-            display: flex;
-            width: 100%;
-            position: relative;
-            background-color: var(--bg-card);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .axis-y-fixed {
-            width: 50px;
-            height: 280px;
-            background: var(--bg-card);
-            z-index: 10;
-            border-right: 1px solid var(--border-color);
-            flex-shrink: 0;
-            pointer-events: none;
-        }
-
-        .touch-scroll-wrapper {
-            flex: 1;
-            overflow-x: auto;
-            overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-        .touch-scroll-wrapper::-webkit-scrollbar { display: none; }
-
-        .chart-inner-container {
-            width: 3200px;
-            height: 280px;
-        }
-
-        .chart-footer-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 10px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 10px;
-        }
-
-        .chart-legend-custom {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .legend-color {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .chart-actions-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-
-        .btn-action-custom {
-            background-color: #2b313a;
-            color: var(--accent);
-            border: 1px solid var(--border-color);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        .btn-action-custom:hover { background-color: #3a414b; }
-
-        .zoom-controls {
-            display: flex;
-            gap: 4px;
-        }
-
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .calendar-header button {
-            background: #2b313a;
-            border: none;
-            color: var(--text-main);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .calendar-header button:hover { background: #3a414b; }
-
-        .weekdays {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            text-align: center;
-            font-weight: bold;
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-        }
-        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        
-        .day-cell {
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: #12161c;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 12px;
-            color: var(--text-muted);
-            cursor: pointer;
-            user-select: none;
-        }
-        .day-cell.selected { background: var(--primary) !important; color: #0b0e11 !important; font-weight: bold; }
-        .day-cell.empty { background: transparent; border: none; cursor: default; }
-
-        #loadingOverlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            justify-content: center;
-            align-items: center;
-            font-size: 15px;
-            font-weight: bold;
-            z-index: 999;
-            flex-direction: column;
-            gap: 8px;
-        }
+      #calPanel {
+        background: var(--panel);
+        border: 1px solid var(--grid);
+        border-radius: 10px;
+        margin: 0 8px 10px;
+        padding: 10px 12px;
+      }
+      .cal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .cal-header button {
+        border: 1px solid var(--grid);
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+        cursor: pointer;
+      }
+      .cal-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: capitalize;
+      }
+      .cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+      }
+      .cal-wd {
+        font-size: 0.7rem;
+        color: var(--sub);
+        text-align: center;
+        padding-bottom: 2px;
+      }
+      .cal-day {
+        border: none;
+        background: transparent;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 10px 0;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      .cal-day:hover {
+        background: var(--bg);
+      }
+      .cal-day.cal-out {
+        color: var(--sub);
+        opacity: 0.4;
+      }
+      .cal-day.cal-today {
+        box-shadow: inset 0 0 0 1.5px var(--accent);
+      }
+      .cal-day.cal-selected {
+        background: var(--accent);
+        color: #fff;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <header>
+      <h1>🌊 Maré Infinita — leitor de tábuas de maré (PDF)</h1>
+      <div class="row">
+        <input
+          id="file"
+          type="file"
+          accept="application/pdf"
+          multiple
+          style="display: none"
+        />
+        <button type="button" onclick="document.getElementById('file').click()">
+          📂 Carregar PDF
+        </button>
+        <button id="calBtn" type="button">📅 Calendário</button>
+        <button id="clearCache" type="button">🗑 Limpar cache</button>
+        <a
+          href="https://www.marinha.mil.br/chm/tabuas-de-mare-6"
+          target="_blank"
+          class="btn-link"
+          title="Baixar PDFs oficiais da Marinha"
+          >⚓ Marinha</a
+        >
+      </div>
+      <div id="status">Carregando PDFs pré-carregados da pasta...</div>
+    </header>
 
-<div id="loadingOverlay">
-    <div id="loadingText">Carregando...</div>
-</div>
-
-<div class="main-container">
-    <div class="card">
-        <h2>PJ Mobile - Tábua de Marés</h2>
-        
-        <div class="form-group">
-            <label>1. Selecione o Estado:</label>
-            <select id="selectEstado" onchange="aoMudarEstado()">
-                <option value="">Selecione o Estado...</option>
-                <option value="ce">Ceará (CE)</option>
-                <option value="rn">Rio Grande do Norte (RN)</option>
-                <option value="pe">Pernambuco (PE)</option>
-                <option value="ba">Bahia (BA)</option>
-                <option value="ma">Maranhão (MA)</option>
-                <option value="pa">Pará (PA)</option>
-                <option value="ap">Amapá (AP)</option>
-                <option value="pi">Piauí (PI)</option>
-                <option value="pb">Paraíba (PB)</option>
-                <option value="al">Alagoas (AL)</option>
-                <option value="se">Sergipe (SE)</option>
-                <option value="es">Espírito Santo (ES)</option>
-                <option value="rj">Rio de Janeiro (RJ)</option>
-                <option value="sp">São Paulo (SP)</option>
-                <option value="pr">Paraná (PR)</option>
-                <option value="sc">Santa Catarina (SC)</option>
-                <option value="rs">Rio Grande do Sul (RS)</option>
-            </select>
-        </div>
-
-        <button class="btn btn-gps" onclick="detectarEstadoGPS()">📍 Detectar via GPS</button>
-
-        <div class="form-group" style="margin-top: 10px;">
-            <label>2. Selecione o Porto:</label>
-            <select id="selectPorto" onchange="aoMudarPorto()" disabled>
-                <option value="">Selecione o Estado primeiro...</option>
-            </select>
-        </div>
+    <!-- Bloco do Passo a Passo -->
+    <div class="step-guide">
+      <h3>📖 Como usar:</h3>
+      <ol>
+        <li>
+          Acesse o site oficial da Marinha e
+          <a
+            href="https://www.marinha.mil.br/chm/tabuas-de-mare-6"
+            target="_blank"
+            >baixe o PDF da tábua de maré</a
+          >
+          do porto desejado.
+        </li>
+        <li>
+          Clique no botão <strong>"📂 Carregar PDF"</strong> acima para carregar
+          o arquivo baixado no seu dispositivo.
+        </li>
+        <li>
+          Navegue pelo gráfico arrastando para os lados ou use os botões de zoom
+          (<strong>+</strong> e <strong>−</strong>).
+        </li>
+        <li>
+          Abra o <strong>"📅 Calendário"</strong> para escolher uma data
+          específica e simular as condições.
+        </li>
+      </ol>
     </div>
 
-    <div class="card" id="cardGrafico" style="display: none;">
-        <h3 id="tituloGrafico" style="font-size: 13px; margin: 0 0 8px 0; text-align: center; color: var(--text-main);">Gráfico de Maré</h3>
-        
-        <div class="chart-wrapper-sticky">
-            <canvas id="axisYCanvas" class="axis-y-fixed"></canvas>
-            <div class="touch-scroll-wrapper" id="scrollContainer">
-                <div class="chart-inner-container" id="innerContainer">
-                    <canvas id="mareChart"></canvas>
-                </div>
-            </div>
+    <div id="calPanel" hidden></div>
+
+    <main>
+      <!-- Bloco contendo a legenda, gráfico e os controles juntos para a tela cheia -->
+      <div id="fullscreenContainer">
+        <div id="legend"></div>
+        <div id="wrap">
+          <canvas id="chart" height="420"></canvas>
         </div>
 
-        <div class="chart-footer-panel">
-            <div class="chart-legend-custom">
-                <div class="legend-item"><div class="legend-color" style="background:#0ecb81;"></div> Curva de Maré</div>
-                <div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> Ponto Atual (Agora)</div>
-            </div>
-            
-            <div class="chart-actions-row">
-                <button class="btn-action-custom" onclick="centralizarNaHoraAtual()">🎯 Agora</button>
-                <div class="zoom-controls">
-                    <button class="btn-action-custom" onclick="ajustarZoomHorizontal(1.25)" title="Comprimir Gráfico">🔍- Comprimir</button>
-                    <button class="btn-action-custom" onclick="ajustarZoomHorizontal(0.8)" title="Expandir Gráfico">🔍+ Expandir</button>
-                    <button class="btn-action-custom" onclick="resetarZoomHorizontal()" title="Resetar Zoom">🔄 Reset</button>
-                </div>
-                <button class="btn-action-custom" id="btnFullscreen" onclick="alternarTelaCheia()">⛶ Tela Cheia</button>
-            </div>
+        <!-- Controles com tamanho de 40px otimizados para toque e legendados -->
+        <div class="toolbar-inferior">
+          <div class="toolbar-linha">
+            <button id="zout" title="Afastar">− Zoom Out</button>
+            <button id="today" title="Ir para agora">📍 Hoje</button>
+            <button id="zin" title="Aproximar">+ Zoom In</button>
+            <button id="btnFullscreen" title="Tela Cheia">⛶ Expandir</button>
+          </div>
+          <div class="toolbar-linha">
+            <label class="toggle-btn"
+              ><input type="checkbox" id="toggleCruz" checked /> Cruz</label
+            >
+            <label class="toggle-btn"
+              ><input type="checkbox" id="toggleDias" checked /> Dias</label
+            >
+            <label class="toggle-btn"
+              ><input type="checkbox" id="togglePontos" checked /> Pontos</label
+            >
+          </div>
         </div>
-    </div>
+      </div>
 
-    <div class="card" id="cardCalendario" style="display: none;">
-        <div class="calendar-header">
-            <button onclick="mudarMes(-1)">◀ Mês</button>
-            <span id="currentMonthYearLabel" style="font-weight: bold; font-size: 13px; color: var(--text-main);">Mês Ano</span>
-            <button onclick="mudarMes(1)">Mês ▶</button>
-        </div>
+      <div id="hint">
+        Arraste para navegar · pinça para zoom · clique num ponto para mover a
+        cruz · use o calendário para simular outro dia
+      </div>
+    </main>
 
-        <div class="weekdays">
-            <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
-        </div>
-        <div class="days-grid" id="calendarDaysGrid"></div>
-    </div>
-</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-<script>
-    const basePortosFallback = {
-        ce: [
-            { id: "ce02", harbor_name: "PORTO DE MUCURIPE (FORTALEZA)", state: "ce" },
-            { id: "ce01", harbor_name: "PORTO DE CAMOCIM", state: "ce" },
-            { id: "ce03", harbor_name: "PORTO DO PECÉM", state: "ce" }
-        ],
-        sp: [
-            { id: "sp01", harbor_name: "PORTO DE SANTOS", state: "sp" },
-            { id: "sp02", harbor_name: "PORTO DE SÃO SEBASTIÃO", state: "sp" }
-        ],
-        rj: [
-            { id: "rj01", harbor_name: "PORTO DO RIO DE JANEIRO", state: "rj" },
-            { id: "rj02", harbor_name: "PORTO DE ANGRA DOS REIS", state: "rj" }
-        ],
-        ba: [
-            { id: "ba01", harbor_name: "PORTO DE SALVADOR", state: "ba" },
-            { id: "ba02", harbor_name: "PORTO DE ILHÉUS", state: "ba" }
-        ]
-    };
+      const MONTHS = {
+        jan: 0,
+        fev: 1,
+        mar: 2,
+        abr: 3,
+        mai: 4,
+        jun: 5,
+        jul: 6,
+        ago: 7,
+        set: 8,
+        out: 9,
+        nov: 10,
+        dez: 11,
+      };
+      const WD = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+      const COLORS = ['#1d6fd6', '#e0733a', '#3aa65a', '#a04fd6', '#d63a5a'];
+      const norm = (s) =>
+        s
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toUpperCase();
 
-    let meuGrafico = null;
-    let portoSelecionado = null;
-    let listaPortosEstado = [];
-    let ultimoIndiceGlobalAtual = -1;
-    let ultimoTotalRotulos = 1;
-    let larguraGraficoAtual = 3200;
-    
-    const hojeData = new Date();
-    let anoExibido = hojeData.getFullYear();
-    let mesExibido = hojeData.getMonth() + 1;
-    let diaSelecionado = hojeData.getDate();
-
-    const cacheTabuas = {};
-
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('selectEstado').value = "";
-        const selectPorto = document.getElementById('selectPorto');
-        selectPorto.innerHTML = '<option value="">Selecione o Estado primeiro...</option>';
-        selectPorto.disabled = true;
-    });
-
-    async function detectarEstadoGPS() {
-        if (!navigator.geolocation) {
-            alert('Geolocalização não suportada.');
-            return;
-        }
-        mostrarLoader("Buscando localização via GPS...");
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            try {
-                const res = await fetch(`https://tabuamare.api.br/api/v1/nearest-harbor-independent-state/${pos.coords.latitude},${pos.coords.longitude}`);
-                const json = await res.json();
-                const p = json.data || json.dados || json;
-                const porto = Array.isArray(p) ? p[0] : p;
-                
-                if (porto && porto.state) {
-                    const est = porto.state.toLowerCase();
-                    document.getElementById('selectEstado').value = est;
-                    await carregarPortosDoEstado(est, false);
-                    document.getElementById('selectPorto').value = porto.id;
-                    aoMudarPorto();
-                    return;
-                }
-                throw new Error();
-            } catch {
-                esconderLoader();
-                alert('Definindo Ceará (CE) por padrão.');
-                document.getElementById('selectEstado').value = 'ce';
-                await carregarPortosDoEstado('ce', false);
+      function parsePdfText(text) {
+        const words = text.split(/\s+/).filter(Boolean);
+        let year = 2026,
+          month = -1,
+          day = null;
+        const ym = text.match(/-\s*(20\d{2})/);
+        if (ym) year = parseInt(ym[1], 10);
+        const pts = [];
+        for (let i = 0; i < words.length; i++) {
+          const tok = words[i];
+          const n = norm(tok).slice(0, 3);
+          if (
+            MONTHS.hasOwnProperty(n.toLowerCase()) &&
+            tok.length <= 10 &&
+            /^[A-Za-zÀ-ÿ]+$/.test(tok)
+          ) {
+            month = MONTHS[n.toLowerCase()];
+            continue;
+          }
+          if (/^\d{1,2}$/.test(tok) && WD.includes(norm(words[i + 1] || ''))) {
+            day = parseInt(tok, 10);
+            i++;
+            continue;
+          }
+          if (
+            /^\d{4}$/.test(tok) &&
+            /^-?\d+\.\d{1,2}$/.test(words[i + 1] || '') &&
+            month >= 0 &&
+            day
+          ) {
+            const hh = parseInt(tok.slice(0, 2), 10),
+              mm = parseInt(tok.slice(2, 4), 10);
+            if (hh < 24 && mm < 60) {
+              const d = new Date(year, month, day, hh, mm);
+              pts.push({ t: d.getTime(), alt: parseFloat(words[i + 1]) });
+              i++;
             }
-        }, () => {
-            esconderLoader();
-            alert('Permissão de GPS negada.');
-        }, { timeout: 6000 });
-    }
-
-    async function aoMudarEstado() {
-        const estado = document.getElementById('selectEstado').value;
-        document.getElementById('cardGrafico').style.display = 'none';
-        document.getElementById('cardCalendario').style.display = 'none';
-        await carregarPortosDoEstado(estado, false);
-    }
-
-    async function carregarPortosDoEstado(estado, manterPorto) {
-        const selectPorto = document.getElementById('selectPorto');
-        if (!estado) {
-            selectPorto.innerHTML = '<option value="">Selecione o Estado primeiro...</option>';
-            selectPorto.disabled = true;
-            return;
+          }
         }
-        
-        mostrarLoader("Carregando portos...");
+        pts.sort((a, b) => a.t - b.t);
+        return { year, pts };
+      }
 
-        try {
-            const res = await fetch(`https://tabuamare.api.br/api/v1/harbors-independent-state/${estado}`);
-            const json = await res.json();
-            
-            if (Array.isArray(json)) {
-                listaPortosEstado = json;
-            } else if (json && Array.isArray(json.data)) {
-                listaPortosEstado = json.data;
-            } else if (json && Array.isArray(json.dados)) {
-                listaPortosEstado = json.dados;
-            } else if (json && Array.isArray(json.harbors)) {
-                listaPortosEstado = json.harbors;
-            } else {
-                listaPortosEstado = [];
-            }
-        } catch(err) {
-            console.warn("Erro ao buscar portos da API, usando fallback:", err);
-            listaPortosEstado = [];
-        } finally {
-            esconderLoader();
+      function stationName(text) {
+        const m = text.match(/([A-ZÀ-Ü0-9 .\-]{5,60}?)\s*\(ESTADO/);
+        return m ? m[1].trim() : 'Estação';
+      }
+
+      async function readPdfData(arrayBuffer) {
+        const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let full = '';
+        for (let p = 1; p <= doc.numPages; p++) {
+          const page = await doc.getPage(p);
+          const content = await page.getTextContent();
+          full += ' ' + content.items.map((it) => it.str).join(' ');
         }
+        const name = stationName(full);
+        const { pts } = parsePdfText(full);
+        return { name, pts };
+      }
 
-        if (!listaPortosEstado || listaPortosEstado.length === 0) {
-            listaPortosEstado = basePortosFallback[estado] || [
-                { id: `${estado}02`, harbor_name: `PORTO PRINCIPAL (${estado.toUpperCase()})`, state: estado }
-            ];
-        }
+      let series = [];
+      const fileInput = document.getElementById('file');
+      const statusEl = document.getElementById('status');
+      const legendEl = document.getElementById('legend');
+      const canvas = document.getElementById('chart');
+      const ctx = canvas.getContext('2d');
+      let view = { start: 0, end: 0 };
+      let domain = { min: 0, max: 0 };
+      let selected = null;
+      let simulatedNow = null;
+      let focusedDay = null;
+      const DEFAULT_SPAN = 3 * 86400000;
 
-        selectPorto.innerHTML = '<option value="">Selecione o Porto...</option>';
-        listaPortosEstado.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.textContent = p.harbor_name || p.name || p.harbor || `Porto ${p.id}`;
-            selectPorto.appendChild(opt);
-        });
-        selectPorto.value = "";
-        selectPorto.disabled = false;
-    }
+      let showCruz = true;
+      let showDias = true;
+      let showPontos = true;
 
-    function aoMudarPorto() {
-        const id = document.getElementById('selectPorto').value;
-        if (!id) {
-            document.getElementById('cardGrafico').style.display = 'none';
-            document.getElementById('cardCalendario').style.display = 'none';
-            return;
-        }
-
-        portoSelecionado = listaPortosEstado.find(p => p.id === id) || { id: id, harbor_name: "Porto Selecionado" };
-
-        document.getElementById('cardGrafico').style.display = 'block';
-        document.getElementById('cardCalendario').style.display = 'block';
-
-        diaSelecionado = hojeData.getDate();
-        mesExibido = hojeData.getMonth() + 1;
-        anoExibido = hojeData.getFullYear();
-
-        desenharCalendario();
-        carregarTabua4Dias(diaSelecionado);
-    }
-
-    function mudarMes(dir) {
-        mesExibido += dir;
-        if (mesExibido > 12) { mesExibido = 1; anoExibido++; }
-        if (mesExibido < 1) { mesExibido = 12; anoExibido--; }
-        diaSelecionado = 1;
-        desenharCalendario();
-        carregarTabua4Dias(diaSelecionado);
-    }
-
-    function desenharCalendario() {
-        const grid = document.getElementById('calendarDaysGrid');
-        grid.innerHTML = '';
-
-        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-        document.getElementById('currentMonthYearLabel').textContent = `${nomesMeses[mesExibido - 1]} de ${anoExibido}`;
-
-        let primeiroDia = new Date(anoExibido, mesExibido - 1, 1).getDay();
-        let vazios = primeiroDia === 0 ? 6 : primeiroDia - 1;
-        let totalDias = new Date(anoExibido, mesExibido, 0).getDate();
-
-        for (let i = 0; i < vazios; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'day-cell empty';
-            grid.appendChild(cell);
-        }
-
-        for (let d = 1; d <= totalDias; d++) {
-            const cell = document.createElement('div');
-            cell.className = 'day-cell';
-            cell.textContent = d;
-
-            if (d === diaSelecionado) cell.classList.add('selected');
-
-            cell.onclick = () => {
-                diaSelecionado = d;
-                document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('selected'));
-                cell.classList.add('selected');
-                carregarTabua4Dias(d);
-            };
-            grid.appendChild(cell);
-        }
-    }
-
-    async function buscarHorasComCache(idPorto, mAlvo, dAlvo, aAlvo) {
-        const cacheKey = `${idPorto}_${aAlvo}_${mAlvo}_${dAlvo}`;
-        
-        if (cacheTabuas[cacheKey]) return cacheTabuas[cacheKey];
-
-        const localSaved = localStorage.getItem(cacheKey);
-        if (localSaved) {
-            try {
-                const parsed = JSON.parse(localSaved);
-                cacheTabuas[cacheKey] = parsed;
-                return parsed;
-            } catch(e) {}
-        }
-
-        let hoursArray = [];
-        try {
-            const res = await fetch(`https://tabuamare.api.br/api/v1/tabua-mare/${idPorto}/${mAlvo}/${dAlvo}`);
-            if (res.ok) {
-                const json = await res.json();
-                hoursArray = extrairHorasRecursivo(json, dAlvo);
-            }
-        } catch(err) {
-            console.warn(`Erro ao buscar dados da API para ${dAlvo}/${mAlvo}`);
-        }
-
-        if (!hoursArray || hoursArray.length === 0) {
-            hoursArray = [
-                { hour: "02:15", level: 0.3 },
-                { hour: "08:30", level: 2.4 },
-                { hour: "14:45", level: 0.4 },
-                { hour: "21:00", level: 2.2 }
-            ];
-        }
-
-        cacheTabuas[cacheKey] = hoursArray;
-        try {
-            localStorage.setItem(cacheKey, JSON.stringify(hoursArray));
-        } catch(e) {}
-
-        return hoursArray;
-    }
-
-    // Interpolação contínua na linha do tempo global dos 4 dias
-    function calcularNivelParaMinutoContinuo(minAbsoluto, todasMaresOrdenadas) {
-        if (!todasMaresOrdenadas || todasMaresOrdenadas.length === 0) return 1.0;
-        
-        let pAnterior = null;
-        let pProximo = null;
-
-        for (let i = 0; i < todasMaresOrdenadas.length; i++) {
-            let pt = todasMaresOrdenadas[i];
-            if (pt.minAbsoluto <= minAbsoluto) pAnterior = pt;
-            if (pt.minAbsoluto >= minAbsoluto && !pProximo) pProximo = pt;
-        }
-
-        if (!pAnterior && pProximo) return pProximo.level;
-        if (pAnterior && !pProximo) return pAnterior.level;
-        if (!pAnterior && !pProximo) return 1.0;
-        if (pAnterior.minAbsoluto === pProximo.minAbsoluto) return pAnterior.level;
-
-        let prop = (minAbsoluto - pAnterior.minAbsoluto) / (pProximo.minAbsoluto - pAnterior.minAbsoluto);
-        let levelInter = pAnterior.level + (pProximo.level - pAnterior.level) * (1 - Math.cos(prop * Math.PI)) / 2;
-        return parseFloat(levelInter.toFixed(2));
-    }
-
-    async function carregarTabua4Dias(diaBase) {
-        const temTudoCache = [ -1, 0, 1, 2 ].every(offset => {
-            let dObj = new Date(anoExibido, mesExibido - 1, diaBase + offset);
-            return cacheTabuas[`${portoSelecionado.id}_${dObj.getFullYear()}_${dObj.getMonth() + 1}_${dObj.getDate()}`] || localStorage.getItem(`${portoSelecionado.id}_${dObj.getFullYear()}_${dObj.getMonth() + 1}_${dObj.getDate()}`);
+      document.getElementById('toggleCruz').addEventListener('change', (e) => {
+        showCruz = e.target.checked;
+        draw();
+      });
+      document.getElementById('toggleDias').addEventListener('change', (e) => {
+        showDias = e.target.checked;
+        draw();
+      });
+      document
+        .getElementById('togglePontos')
+        .addEventListener('change', (e) => {
+          showPontos = e.target.checked;
+          draw();
         });
 
-        if (!temTudoCache) {
-            mostrarLoader(`Carregando dados precisos (4 dias)...`);
-        }
-        
-        let rotulosGlobais = [];
-        let dadosGlobais = [];
-        let indiceGlobalAtual = -1;
-        let menorDiferencaMinutos = Infinity;
+      // Controle de Tela Cheia
+      const btnFullscreen = document.getElementById('btnFullscreen');
+      const fullscreenContainer = document.getElementById(
+        'fullscreenContainer'
+      );
 
-        const agora = new Date();
-        const minAtualTotal = agora.getHours() * 60 + agora.getMinutes();
-
-        try {
-            let todasMaresOrdenadas = [];
-            let diasEstrutura = [];
-
-            // 1. Unifica todos os picos de maré dos 4 dias em uma linha do tempo única
-            for (let offset = -1; offset <= 2; offset++) {
-                let dObj = new Date(anoExibido, mesExibido - 1, diaBase + offset);
-                let dAlvo = dObj.getDate();
-                let mAlvo = dObj.getMonth() + 1;
-                let aAlvo = dObj.getFullYear();
-
-                let hoursArray = await buscarHorasComCache(portoSelecionado.id, mAlvo, dAlvo, aAlvo);
-                hoursArray.sort((a, b) => a.hour.localeCompare(b.hour));
-                
-                let baseMinutosDia = (offset + 1) * 1440; // Offset relativo: dia -1 = 0 min, dia 0 = 1440 min, etc.
-
-                hoursArray.forEach(m => {
-                    let minNoDia = horaParaMinutos(m.hour);
-                    todasMaresOrdenadas.push({
-                        minAbsoluto: baseMinutosDia + minNoDia,
-                        level: m.level
-                    });
-                });
-
-                diasEstrutura.push({ offset, dAlvo, mAlvo, aAlvo, baseMinutosDia });
-            }
-
-            todasMaresOrdenadas.sort((a, b) => a.minAbsoluto - b.minAbsoluto);
-
-            // 2. Gera pontos contínuos de hora em hora (0h a 23h) evitando saltos nas viradas de dia
-            diasEstrutura.forEach(diaInfo => {
-                let { dAlvo, mAlvo, aAlvo, baseMinutosDia } = diaInfo;
-
-                for (let h = 0; h < 24; h++) {
-                    let minAbsolutoHora = baseMinutosDia + (h * 60);
-                    
-                    let levelCalc = calcularNivelParaMinutoContinuo(minAbsolutoHora, todasMaresOrdenadas);
-
-                    rotulosGlobais.push(`${dAlvo}/${mAlvo} - ${h}`);
-                    dadosGlobais.push(levelCalc);
-
-                    const ehO_DiaAtual = (dAlvo === agora.getDate() && mAlvo === (agora.getMonth() + 1) && aAlvo === agora.getFullYear());
-                    if (ehO_DiaAtual) {
-                        let diff = Math.abs((h * 60) - minAtualTotal);
-                        if (diff < menorDiferencaMinutos) {
-                            menorDiferencaMinutos = diff;
-                            indiceGlobalAtual = rotulosGlobais.length - 1;
-                        }
-                    }
-                }
-            });
-
-        } catch (e) {
-            console.error(e);
-        } finally {
-            esconderLoader();
-        }
-
-        ultimoIndiceGlobalAtual = indiceGlobalAtual;
-        ultimoTotalRotulos = rotulosGlobais.length;
-
-        renderizarGrafico4Dias(rotulosGlobais, dadosGlobais, indiceGlobalAtual);
-    }
-
-    function extrairHorasRecursivo(obj, diaAlvo) {
-        if (!obj || typeof obj !== 'object') return [];
-        if (obj.day == diaAlvo && Array.isArray(obj.hours)) return obj.hours;
-        for (let key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                let res = extrairHorasRecursivo(obj[key], diaAlvo);
-                if (res && res.length > 0) return res;
-            }
-        }
-        return [];
-    }
-
-    function horaParaMinutos(horaStr) {
-        if (!horaStr) return 0;
-        const partes = horaStr.split(':');
-        return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
-    }
-
-    function centralizarNaHoraAtual() {
-        const wrapper = document.getElementById('scrollContainer');
-        if (wrapper) {
-            const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
-            if (ultimoIndiceGlobalAtual !== -1 && maxScroll > 0) {
-                const proporcao = ultimoIndiceGlobalAtual / (ultimoTotalRotulos - 1);
-                const posicaoAlvo = (maxScroll * proporcao) - (wrapper.clientWidth * 0.1);
-                
-                wrapper.scrollTo({
-                    left: Math.max(0, Math.min(posicaoAlvo, maxScroll)),
-                    behavior: 'smooth'
-                });
-            } else {
-                wrapper.scrollTo({
-                    left: maxScroll * 0.25,
-                    behavior: 'smooth'
-                });
-            }
-        }
-    }
-
-    function ajustarZoomHorizontal(fator) {
-        larguraGraficoAtual = larguraGraficoAtual * fator;
-        if (larguraGraficoAtual < 1600) larguraGraficoAtual = 1600;
-        if (larguraGraficoAtual > 8000) larguraGraficoAtual = 8000;
-        
-        document.getElementById('innerContainer').style.width = larguraGraficoAtual + 'px';
-        if (meuGrafico) meuGrafico.resize();
-        
-        setTimeout(() => centralizarNaHoraAtual(), 50);
-    }
-
-    function resetarZoomHorizontal() {
-        larguraGraficoAtual = 3200;
-        document.getElementById('innerContainer').style.width = larguraGraficoAtual + 'px';
-        if (meuGrafico) meuGrafico.resize();
-        
-        setTimeout(() => centralizarNaHoraAtual(), 50);
-    }
-
-    function alternarTelaCheia() {
-        const card = document.getElementById('cardGrafico');
-        const btn = document.getElementById('btnFullscreen');
-        card.classList.toggle('fullscreen');
-        
-        if (card.classList.contains('fullscreen')) {
-            btn.textContent = '❌ Fechar Cheia';
-            document.getElementById('innerContainer').style.width = '4500px';
+      btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          if (fullscreenContainer.requestFullscreen) {
+            fullscreenContainer.requestFullscreen();
+          } else if (fullscreenContainer.webkitRequestFullscreen) {
+            fullscreenContainer.webkitRequestFullscreen();
+          }
         } else {
-            btn.textContent = '⛶ Tela Cheia';
-            document.getElementById('innerContainer').style.width = larguraGraficoAtual + 'px';
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
         }
-        if (meuGrafico) meuGrafico.resize();
+      });
 
-        setTimeout(() => centralizarNaHoraAtual(), 100);
-    }
+      function setDefaultView() {
+        const now = Date.now();
+        const center = Math.min(Math.max(now, domain.min), domain.max);
+        let s = center - DEFAULT_SPAN / 2,
+          e = center + DEFAULT_SPAN / 2;
+        if (s < domain.min) {
+          e += domain.min - s;
+          s = domain.min;
+        }
+        if (e > domain.max) {
+          s -= e - domain.max;
+          e = domain.max;
+        }
+        view.start = s;
+        view.end = e;
+      }
 
-    const verticalLinePlugin = {
-        id: 'verticalLinePlugin',
-        afterDraw: (chart) => {
-            if (ultimoIndiceGlobalAtual === -1) return;
-            const meta = chart.getDatasetMeta(0);
-            if (!meta || !meta.data || !meta.data[ultimoIndiceGlobalAtual]) return;
+      const CACHE_KEY = 'mareInfinita.series.v1';
+      function loadCache() {
+        try {
+          return JSON.parse(localStorage.getItem(CACHE_KEY)) || [];
+        } catch (e) {
+          return [];
+        }
+      }
+      function saveCache() {
+        try {
+          localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify(
+              series.map((s) => ({
+                name: s.name,
+                color: s.color,
+                points: s.points,
+              }))
+            )
+          );
+        } catch (e) {}
+      }
+      function recomputeDomain() {
+        const allT = series.flatMap((s) => s.points.map((p) => p.t));
+        if (!allT.length) return;
+        domain.min = Math.min(...allT, Date.now());
+        domain.max = Math.max(...allT, Date.now());
+      }
+      function mergeSeries(newOnes) {
+        newOnes.forEach((ns) => {
+          const existing = series.find((s) => s.name === ns.name);
+          if (existing) {
+            const map = new Map(existing.points.map((p) => [p.t, p]));
+            ns.points.forEach((p) => map.set(p.t, p));
+            existing.points = Array.from(map.values()).sort(
+              (a, b) => a.t - b.t
+            );
+          } else {
+            series.push({
+              name: ns.name,
+              color: COLORS[series.length % COLORS.length],
+              points: ns.points,
+              visible: true,
+            });
+          }
+        });
+      }
 
-            const ponto = meta.data[ultimoIndiceGlobalAtual];
-            const puntoX = ponto.x;
-            const puntoY = ponto.y;
-            const topY = chart.chartArea.top;
-            const bottomY = chart.chartArea.bottom;
-            const ctx = chart.ctx;
-            const valorAtual = chart.data.datasets[0].data[ultimoIndiceGlobalAtual];
+      fileInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        statusEl.textContent = 'Lendo PDF(s)...';
+        const parsed = [];
+        for (const f of files) {
+          try {
+            const buf = await f.arrayBuffer();
+            const r = await readPdfData(buf);
+            if (r.pts.length) parsed.push({ name: r.name, points: r.pts });
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        if (!parsed.length) {
+          statusEl.textContent =
+            'Não consegui extrair dados de maré desse PDF.';
+          return;
+        }
+        const wasEmpty = series.length === 0;
+        mergeSeries(parsed);
+        recomputeDomain();
+        if (wasEmpty) {
+          setDefaultView();
+        }
+        saveCache();
+        statusEl.textContent =
+          'Salvo no cache deste navegador · ' +
+          series
+            .map((s) => `${s.name}: ${s.points.length} leituras`)
+            .join(' · ');
+        buildLegend();
+        fileInput.value = '';
+        resize();
+        draw();
+      });
+
+      function buildLegend() {
+        legendEl.innerHTML = '';
+        series.forEach((s, i) => {
+          const lab = document.createElement('label');
+          lab.innerHTML = `<span class="sw" style="background:${s.color}"></span>${s.name}`;
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = true;
+          cb.style.marginRight = '4px';
+          cb.addEventListener('change', () => {
+            s.visible = cb.checked;
+            draw();
+          });
+          lab.prepend(cb);
+          const rm = document.createElement('button');
+          rm.textContent = '×';
+          rm.className = 'rm';
+          rm.type = 'button';
+          rm.title = 'Remover esta série';
+          rm.addEventListener('click', () => {
+            series.splice(i, 1);
+            saveCache();
+            recomputeDomain();
+            buildLegend();
+            draw();
+          });
+          lab.appendChild(rm);
+          legendEl.appendChild(lab);
+        });
+      }
+
+      function resize() {
+        const w = canvas.parentElement.clientWidth;
+        canvas.width = w * devicePixelRatio;
+        canvas.height = 420 * devicePixelRatio;
+        canvas.style.height = '420px';
+      }
+      window.addEventListener('resize', () => {
+        resize();
+        draw();
+      });
+
+      function cosInterp(p0, p1, t) {
+        const mu = (t - p0.t) / (p1.t - p0.t);
+        const mu2 = (1 - Math.cos(mu * Math.PI)) / 2;
+        return p0.alt * (1 - mu2) + p1.alt * mu2;
+      }
+      function altAt(points, t) {
+        if (!points.length) return null;
+        if (t <= points[0].t) return points[0].alt;
+        if (t >= points[points.length - 1].t)
+          return points[points.length - 1].alt;
+        let lo = 0,
+          hi = points.length - 1;
+        while (hi - lo > 1) {
+          const mid = (lo + hi) >> 1;
+          if (points[mid].t <= t) lo = mid;
+          else hi = mid;
+        }
+        return cosInterp(points[lo], points[hi], t);
+      }
+
+      function dayStart(t) {
+        const d = new Date(t);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      }
+      function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.arcTo(x + w, y, x + w, y + h, r);
+        c.arcTo(x + w, y + h, x, y + h, r);
+        c.arcTo(x, y + h, x, y, r);
+        c.arcTo(x, y, x + w, y, r);
+        c.closePath();
+      }
+      function tideKind(points, idx) {
+        if (points.length < 2) return '';
+        const p = points[idx];
+        const prev = points[idx - 1],
+          next = points[idx + 1];
+        if (prev && next) {
+          if (p.alt > prev.alt && p.alt > next.alt) return 'Maré alta';
+          if (p.alt < prev.alt && p.alt < next.alt) return 'Maré baixa';
+          return '';
+        }
+        const other = prev || next;
+        return p.alt > other.alt ? 'Maré alta' : 'Maré baixa';
+      }
+
+      function niceStep(span) {
+        const steps = [
+          3600e3,
+          6 * 3600e3,
+          12 * 3600e3,
+          86400e3,
+          2 * 86400e3,
+          5 * 86400e3,
+          10 * 86400e3,
+          30 * 86400e3,
+          90 * 86400e3,
+          180 * 86400e3,
+        ];
+        for (const s of steps) {
+          if (span / s <= 7) return s;
+        }
+        return 365 * 86400e3;
+      }
+      function fmtTick(t, step) {
+        const d = new Date(t);
+        if (step < 86400e3)
+          return d.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        if (step < 30 * 86400e3)
+          return d.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+          });
+        return d.toLocaleDateString('pt-BR', {
+          month: 'short',
+          year: '2-digit',
+        });
+      }
+
+      function draw() {
+        if (!series.length) return;
+        const W = canvas.width,
+          H = canvas.height,
+          dpr = devicePixelRatio;
+        ctx.clearRect(0, 0, W, H);
+        const padL = 46 * dpr,
+          padB = 26 * dpr,
+          padT = 14 * dpr,
+          padR = 10 * dpr;
+        const plotW = W - padL - padR,
+          plotH = H - padT - padB;
+        const span = view.end - view.start;
+
+        const visible = series.filter((s) => s.visible);
+        let vmin = Infinity,
+          vmax = -Infinity;
+        visible.forEach((s) =>
+          s.points.forEach((p) => {
+            if (
+              p.t >= view.start - span * 0.1 &&
+              p.t <= view.end + span * 0.1
+            ) {
+              vmin = Math.min(vmin, p.alt);
+              vmax = Math.max(vmax, p.alt);
+            }
+          })
+        );
+        if (!isFinite(vmin)) {
+          vmin = 0;
+          vmax = 3;
+        }
+        const pad = (vmax - vmin) * 0.15 || 0.5;
+        vmin -= pad;
+        vmax += pad;
+
+        const xFor = (t) => padL + ((t - view.start) / span) * plotW;
+        const yFor = (a) => padT + (1 - (a - vmin) / (vmax - vmin)) * plotH;
+
+        if (showDias) {
+          const subCol = getComputedStyle(
+            document.documentElement
+          ).getPropertyValue('--sub');
+          const textCol = getComputedStyle(
+            document.documentElement
+          ).getPropertyValue('--text');
+          const showLabels = span <= 32 * 86400000;
+          let d0 = dayStart(view.start),
+            dayIdx = 0;
+          ctx.save();
+          while (d0 < view.end) {
+            const d1 = d0 + 86400000;
+            const xA = Math.max(xFor(d0), padL),
+              xB = Math.min(xFor(d1), W - padR);
+            if (xB > xA) {
+              if (dayIdx % 2 === 1) {
+                ctx.fillStyle = 'rgba(128,128,128,0.07)';
+                ctx.fillRect(xA, padT, xB - xA, plotH);
+              }
+              if (showLabels && xB - xA > 26 * dpr) {
+                ctx.font = `${10 * dpr}px sans-serif`;
+                ctx.fillStyle = textCol;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                const label = new Date(d0).toLocaleDateString('pt-BR', {
+                  weekday: 'short',
+                  day: '2-digit',
+                  month: '2-digit',
+                });
+                ctx.fillText(label, xA + 4 * dpr, padT + 3 * dpr);
+              }
+            }
+            if (d0 > view.start && d0 < view.end) {
+              const x = xFor(d0);
+              ctx.beginPath();
+              ctx.moveTo(x, padT);
+              ctx.lineTo(x, H - padB);
+              ctx.strokeStyle = subCol;
+              ctx.globalAlpha = 0.55;
+              ctx.lineWidth = 1.2 * dpr;
+              ctx.stroke();
+              ctx.globalAlpha = 1;
+            }
+            d0 = d1;
+            dayIdx++;
+          }
+          ctx.restore();
+        }
+
+        ctx.strokeStyle = getComputedStyle(
+          document.documentElement
+        ).getPropertyValue('--grid');
+        ctx.fillStyle = getComputedStyle(
+          document.documentElement
+        ).getPropertyValue('--sub');
+        ctx.font = `${11 * dpr}px sans-serif`;
+        ctx.lineWidth = 1;
+        const altTicks = 5;
+        for (let i = 0; i <= altTicks; i++) {
+          const a = vmin + ((vmax - vmin) * i) / altTicks;
+          const y = yFor(a);
+          ctx.beginPath();
+          ctx.moveTo(padL, y);
+          ctx.lineTo(W - padR, y);
+          ctx.stroke();
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(a.toFixed(1) + 'm', padL - 6 * dpr, y);
+        }
+
+        const step = niceStep(span);
+        let t0 = Math.floor(view.start / step) * step;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (let t = t0; t <= view.end; t += step) {
+          if (t < view.start) continue;
+          const x = xFor(t);
+          ctx.beginPath();
+          ctx.moveTo(x, padT);
+          ctx.lineTo(x, H - padB);
+          ctx.strokeStyle = getComputedStyle(
+            document.documentElement
+          ).getPropertyValue('--grid');
+          ctx.stroke();
+          ctx.fillText(fmtTick(t, step), x, H - padB + 4 * dpr);
+        }
+
+        visible.forEach((s) => {
+          ctx.beginPath();
+          for (let x = 0; x <= plotW; x += 2 * dpr) {
+            const t = view.start + (x / plotW) * span;
+            const a = altAt(s.points, t);
+            const X = padL + x,
+              Y = yFor(a);
+            if (x === 0) ctx.moveTo(X, Y);
+            else ctx.lineTo(X, Y);
+          }
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = 2 * dpr;
+          ctx.stroke();
+
+          if (showPontos) {
+            s.points.forEach((p) => {
+              if (p.t >= view.start && p.t <= view.end) {
+                ctx.beginPath();
+                ctx.arc(xFor(p.t), yFor(p.alt), 2.5 * dpr, 0, 7);
+                ctx.fillStyle = s.color;
+                ctx.fill();
+              }
+            });
+          }
+        });
+
+        if (showCruz) {
+          let targetT = simulatedNow != null ? simulatedNow : Date.now();
+          let targetAlt = vmin + (vmax - vmin) / 2;
+
+          if (selected && selected.p) {
+            targetT = selected.p.t;
+            targetAlt = selected.p.alt;
+          } else if (visible.length > 0) {
+            const val = altAt(visible[0].points, targetT);
+            if (val != null) targetAlt = val;
+          }
+
+          if (targetT >= view.start && targetT <= view.end) {
+            const x = xFor(targetT);
+            const y = yFor(targetAlt);
 
             ctx.save();
-            
-            // 1. Linha vertical pontilhada
+            ctx.setLineDash([4 * dpr, 3 * dpr]);
+            ctx.strokeStyle =
+              getComputedStyle(document.documentElement).getPropertyValue(
+                '--accent'
+              ) || '#1d6fd6';
+            ctx.lineWidth = 1.5 * dpr;
+
             ctx.beginPath();
-            ctx.moveTo(puntoX, topY);
-            ctx.lineTo(puntoX, bottomY);
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ef4444';
-            ctx.setLineDash([5, 5]);
+            ctx.moveTo(x, padT);
+            ctx.lineTo(x, H - padB);
             ctx.stroke();
-
-            // 2. Halo brilhante e ponto vermelho
-            ctx.setLineDash([]);
             ctx.beginPath();
-            ctx.arc(puntoX, puntoY, 10, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.arc(puntoX, puntoY, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ef4444';
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.fill();
+            ctx.moveTo(padL, y);
+            ctx.lineTo(W - padR, y);
             ctx.stroke();
-
-            // 3. Badge explicativo
-            const text = `${valorAtual}m`;
-            ctx.font = 'bold 11px sans-serif';
-            const textWidth = ctx.measureText(text).width;
-            const badgePadding = 6;
-            const badgeWidth = textWidth + (badgePadding * 2);
-            const badgeHeight = 18;
-            
-            let badgeY = puntoY - 26;
-            if (badgeY < topY + 5) { badgeY = puntoY + 12; }
-
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath();
-            if (ctx.roundRect) {
-                ctx.roundRect(puntoX - (badgeWidth / 2), badgeY, badgeWidth, badgeHeight, 4);
-            } else {
-                ctx.rect(puntoX - (badgeWidth / 2), badgeY, badgeWidth, badgeHeight);
-            }
-            ctx.fill();
-
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, puntoX, badgeY + (badgeHeight / 2));
 
             ctx.restore();
+
+            ctx.fillStyle =
+              getComputedStyle(document.documentElement).getPropertyValue(
+                '--accent'
+              ) || '#1d6fd6';
+            ctx.font = `${10 * dpr}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(
+              selected
+                ? 'ponto selecionado'
+                : simulatedNow != null
+                ? 'hora simulada'
+                : 'agora',
+              x,
+              padT + 10 * dpr
+            );
+          }
         }
-    };
 
-    function renderizarGrafico4Dias(rotulos, dados, indiceGlobalAtual) {
-        const ctx = document.getElementById('mareChart').getContext('2d');
-        if (meuGrafico) meuGrafico.destroy();
+        if (selected) {
+          const { s, p } = selected;
+          if (!s.visible || p.t < view.start || p.t > view.end) {
+            selected = null;
+          } else {
+            const idx = s.points.indexOf(p);
+            const kind = tideKind(s.points, idx);
+            const x = xFor(p.t),
+              y = yFor(p.alt);
+            ctx.beginPath();
+            ctx.arc(x, y, 5 * dpr, 0, 7);
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = 2 * dpr;
+            ctx.stroke();
+            const dateStr = new Date(p.t).toLocaleDateString('pt-BR', {
+              weekday: 'short',
+              day: '2-digit',
+              month: '2-digit',
+            });
+            const timeStr = new Date(p.t).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            const lines = [
+              kind ? `${kind} · ${s.name}` : s.name,
+              `${dateStr}, ${timeStr}`,
+              `${p.alt.toFixed(2)} m`,
+            ];
+            ctx.font = `${11 * dpr}px sans-serif`;
+            const lineH = 15 * dpr;
+            const boxW =
+              Math.max(...lines.map((l) => ctx.measureText(l).width)) +
+              18 * dpr;
+            const boxH = lines.length * lineH + 10 * dpr;
+            let bx = x - boxW / 2;
+            bx = Math.min(
+              Math.max(bx, padL + 2 * dpr),
+              W - padR - boxW - 2 * dpr
+            );
+            let by = y - boxH - 16 * dpr;
+            if (by < padT)
+              by = Math.min(y + 16 * dpr, H - padB - boxH - 2 * dpr);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, by < y ? by + boxH : by);
+            ctx.strokeStyle = s.color;
+            ctx.setLineDash([2 * dpr, 2 * dpr]);
+            ctx.lineWidth = 1 * dpr;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            roundRect(ctx, bx, by, boxW, boxH, 7 * dpr);
+            ctx.fillStyle = getComputedStyle(
+              document.documentElement
+            ).getPropertyValue('--panel');
+            ctx.fill();
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = 1.5 * dpr;
+            ctx.stroke();
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            lines.forEach((l, i) => {
+              ctx.fillStyle =
+                i === 0
+                  ? s.color
+                  : getComputedStyle(document.documentElement).getPropertyValue(
+                      '--text'
+                    );
+              ctx.font =
+                i === 0
+                  ? `bold ${11 * dpr}px sans-serif`
+                  : `${11 * dpr}px sans-serif`;
+              ctx.fillText(l, bx + 9 * dpr, by + 5 * dpr + i * lineH);
+            });
+          }
+        }
+      }
 
-        document.getElementById('tituloGrafico').textContent = `Tábua de Marés (Alta Precisão) — ${portoSelecionado.harbor_name}`;
+      let dragging = false,
+        startX = 0,
+        startView = null;
+      let downX = 0,
+        downY = 0,
+        downT = 0;
+      canvas.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        startX = e.clientX;
+        startView = { ...view };
+        canvas.setPointerCapture(e.pointerId);
+        downX = e.clientX;
+        downY = e.clientY;
+        downT = Date.now();
+      });
+      canvas.addEventListener('pointermove', (e) => {
+        if (!dragging || !series.length) return;
+        const dx = e.clientX - startX;
+        const span = startView.end - startView.start;
+        const msPerPx = span / canvas.getBoundingClientRect().width;
+        let ns = startView.start - dx * msPerPx,
+          ne = startView.end - dx * msPerPx;
+        if (ns < domain.min) {
+          ne += domain.min - ns;
+          ns = domain.min;
+        }
+        if (ne > domain.max) {
+          ns -= ne - domain.max;
+          ne = domain.max;
+        }
+        view.start = ns;
+        view.end = ne;
+        draw();
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) =>
+        canvas.addEventListener(ev, (e) => {
+          if (ev === 'pointerup' && dragging && series.length) {
+            const dx = Math.abs(e.clientX - downX),
+              dy = Math.abs(e.clientY - downY),
+              dt = Date.now() - downT;
+            if (dx < 6 && dy < 6 && dt < 600) handleTap(e);
+          }
+          dragging = false;
+        })
+      );
 
-        meuGrafico = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: rotulos,
-                datasets: [
-                    {
-                        label: 'Curva de Maré',
-                        data: dados,
-                        borderColor: '#0ecb81',
-                        backgroundColor: 'rgba(14, 203, 129, 0.15)',
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.35,
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        pointHitRadius: 0
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                events: [],
-                scales: {
-                    y: { 
-                        beginAtZero: false,
-                        grid: { color: '#2b313a' },
-                        ticks: { display: false },
-                        title: { display: false }
-                    },
-                    x: {
-                        grid: { 
-                            display: true,
-                            color: '#2b313a',
-                            drawOnChartArea: true
-                        },
-                        ticks: { 
-                            color: '#848e9c', 
-                            autoSkip: false,
-                            maxRotation: 0,
-                            callback: function(value, index, ticks) {
-                                const labelFull = this.getLabelForValue(value);
-                                if (!labelFull) return '';
-                                const partes = labelFull.split(' - ');
-                                return partes[1] !== undefined ? partes[1] : labelFull;
-                            }
-                        },
-                        title: { display: true, text: 'Horas (0 a 23)', color: '#848e9c' }
-                    }
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: false }
-                }
-            },
-            plugins: [
-                verticalLinePlugin,
-                {
-                    id: 'copyAxisYPlugin',
-                    afterRender: (chart) => {
-                        desenharEixoYFixo(chart);
-                    }
-                }
-            ]
+      function handleTap(e) {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = devicePixelRatio;
+        const X = (e.clientX - rect.left) * dpr,
+          Y = (e.clientY - rect.top) * dpr;
+        const padL = 46 * dpr,
+          padB = 26 * dpr,
+          padT = 14 * dpr,
+          padR = 10 * dpr;
+        const plotW = canvas.width - padL - padR;
+        if (
+          X < padL ||
+          X > canvas.width - padR ||
+          Y < padT ||
+          Y > canvas.height - padB
+        ) {
+          selected = null;
+          draw();
+          return;
+        }
+        const span = view.end - view.start;
+        const tClick = view.start + ((X - padL) / plotW) * span;
+        let best = null,
+          bestDist = Infinity;
+        series
+          .filter((s) => s.visible)
+          .forEach((s) => {
+            s.points.forEach((p) => {
+              if (
+                p.t < view.start - span * 0.05 ||
+                p.t > view.end + span * 0.05
+              )
+                return;
+              const dpx = (Math.abs(p.t - tClick) / span) * plotW;
+              if (dpx < bestDist) {
+                bestDist = dpx;
+                best = { s, p };
+              }
+            });
+          });
+        const threshold = 35 * dpr;
+        selected = best && bestDist <= threshold ? best : null;
+        draw();
+      }
+
+      function zoom(factor, centerT) {
+        const span = view.end - view.start;
+        let ns = centerT - (centerT - view.start) * factor;
+        let ne = centerT + (view.end - centerT) * factor;
+        const minSpan = 3 * 3600e3,
+          maxSpan = Math.max(domain.max - domain.min, minSpan);
+        let newSpan = ne - ns;
+        if (newSpan < minSpan) {
+          const c = (ns + ne) / 2;
+          ns = c - minSpan / 2;
+          ne = c + minSpan / 2;
+        }
+        if (newSpan > maxSpan) {
+          ns = domain.min;
+          ne = domain.max;
+        }
+        if (ns < domain.min) {
+          ne += domain.min - ns;
+          ns = domain.min;
+        }
+        if (ne > domain.max) {
+          ns -= ne - domain.max;
+          ne = domain.max;
+        }
+        view.start = ns;
+        view.end = ne;
+        draw();
+      }
+      canvas.addEventListener(
+        'wheel',
+        (e) => {
+          if (!series.length) return;
+          e.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const frac = (e.clientX - rect.left) / rect.width;
+          const centerT = view.start + frac * (view.end - view.start);
+          zoom(e.deltaY > 0 ? 1.15 : 0.87, centerT);
+        },
+        { passive: false }
+      );
+
+      document
+        .getElementById('zin')
+        .addEventListener(
+          'click',
+          () => series.length && zoom(0.7, (view.start + view.end) / 2)
+        );
+      document
+        .getElementById('zout')
+        .addEventListener(
+          'click',
+          () => series.length && zoom(1.4, (view.start + view.end) / 2)
+        );
+      document.getElementById('today').addEventListener('click', () => {
+        if (!series.length) return;
+        simulatedNow = null;
+        focusedDay = null;
+        selected = null;
+        const now = Date.now();
+        domain.min = Math.min(domain.min, now);
+        domain.max = Math.max(domain.max, now);
+        const span = view.end - view.start || DEFAULT_SPAN;
+        view.start = now - span / 2;
+        view.end = now + span / 2;
+        if (!calPanel.hidden) renderCalendar();
+        draw();
+      });
+      document.getElementById('clearCache').addEventListener('click', () => {
+        try {
+          localStorage.removeItem(CACHE_KEY);
+        } catch (e) {}
+        series = [];
+        legendEl.innerHTML = '';
+        selected = null;
+        simulatedNow = null;
+        focusedDay = null;
+        domain = { min: 0, max: 0 };
+        view = { start: 0, end: 0 };
+        statusEl.textContent = 'Cache limpo. Envie um PDF para começar.';
+        if (!calPanel.hidden) renderCalendar();
+        draw();
+      });
+
+      const calBtn = document.getElementById('calBtn');
+      const calPanel = document.getElementById('calPanel');
+      let calMonth = dayStart(Date.now());
+      calMonth = new Date(calMonth);
+      calMonth.setDate(1);
+
+      calBtn.addEventListener('click', () => {
+        calPanel.hidden = !calPanel.hidden;
+        if (!calPanel.hidden) renderCalendar();
+      });
+
+      function shiftMonth(n) {
+        calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + n, 1);
+        renderCalendar();
+      }
+
+      function renderCalendar() {
+        calPanel.innerHTML = '';
+        const header = document.createElement('div');
+        header.className = 'cal-header';
+        const prev = document.createElement('button');
+        prev.type = 'button';
+        prev.textContent = '‹';
+        prev.addEventListener('click', () => shiftMonth(-1));
+        const next = document.createElement('button');
+        next.type = 'button';
+        next.textContent = '›';
+        next.addEventListener('click', () => shiftMonth(1));
+        const title = document.createElement('span');
+        title.className = 'cal-title';
+        title.textContent = calMonth.toLocaleDateString('pt-BR', {
+          month: 'long',
+          year: 'numeric',
         });
+        header.appendChild(prev);
+        header.appendChild(title);
+        header.appendChild(next);
+        calPanel.appendChild(header);
 
-        setTimeout(() => {
-            centralizarNaHoraAtual();
-        }, 150);
-    }
+        const grid = document.createElement('div');
+        grid.className = 'cal-grid';
+        ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'].forEach((w) => {
+          const el = document.createElement('div');
+          el.className = 'cal-wd';
+          el.textContent = w;
+          grid.appendChild(el);
+        });
+        const first = calMonth;
+        const startOffset = (first.getDay() + 6) % 7;
+        const startDate = new Date(first);
+        startDate.setDate(first.getDate() - startOffset);
+        const todayStart = dayStart(Date.now());
+        for (let i = 0; i < 42; i++) {
+          const d = new Date(startDate);
+          d.setDate(startDate.getDate() + i);
+          const dStart = dayStart(d.getTime());
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'cal-day';
+          if (d.getMonth() !== first.getMonth()) cell.classList.add('cal-out');
+          if (dStart === todayStart) cell.classList.add('cal-today');
+          if (focusedDay === dStart) cell.classList.add('cal-selected');
+          cell.textContent = d.getDate();
+          cell.addEventListener('click', () => focusDay(dStart));
+          grid.appendChild(cell);
+        }
+        calPanel.appendChild(grid);
+      }
 
-    function desenharEixoYFixo(chart) {
-        const axisCanvas = document.getElementById('axisYCanvas');
-        if (!axisCanvas) return;
-        const ctx = axisCanvas.getContext('2d');
-        
-        const yScale = chart.scales.y;
-        if (!yScale) return;
+      function focusDay(dStart) {
+        if (!series.length) return;
+        focusedDay = dStart;
+        const nowClock = new Date();
+        const sim = new Date(dStart);
+        sim.setHours(
+          nowClock.getHours(),
+          nowClock.getMinutes(),
+          nowClock.getSeconds(),
+          0
+        );
+        simulatedNow = sim.getTime();
+        selected = null;
+        domain.min = Math.min(domain.min, dStart);
+        domain.max = Math.max(domain.max, dStart + 86400000);
+        view.start = dStart;
+        view.end = dStart + 86400000;
+        calPanel.hidden = true;
+        draw();
+      }
 
-        axisCanvas.width = 50;
-        axisCanvas.height = chart.height;
+      let pts2 = {};
+      canvas.addEventListener('pointerdown', (e) => {
+        pts2[e.pointerId] = { x: e.clientX };
+      });
+      canvas.addEventListener('pointermove', (e) => {
+        if (!pts2[e.pointerId]) return;
+        pts2[e.pointerId] = { x: e.clientX };
+        const ids = Object.keys(pts2);
+        if (ids.length === 2) {
+          dragging = false;
+          const [a, b] = ids.map((id) => pts2[id].x);
+          const dist = Math.abs(a - b);
+          if (!canvas._pinchDist) canvas._pinchDist = dist;
+          const factor = canvas._pinchDist / dist;
+          const rect = canvas.getBoundingClientRect();
+          const centerX = (a + b) / 2 - rect.left;
+          const centerT =
+            view.start + (centerX / rect.width) * (view.end - view.start);
+          zoom(factor, centerT);
+          canvas._pinchDist = dist;
+        }
+      });
+      ['pointerup', 'pointercancel'].forEach((ev) =>
+        canvas.addEventListener(ev, (e) => {
+          delete pts2[e.pointerId];
+          canvas._pinchDist = null;
+        })
+      );
 
-        ctx.clearRect(0, 0, axisCanvas.width, axisCanvas.height);
-        
-        ctx.save();
-        ctx.fillStyle = '#848e9c';
-        ctx.font = 'bold 10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        ctx.translate(12, chart.chartArea.top + (chart.chartArea.height / 2));
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText('Metros', 0, 0);
-        ctx.restore();
+      async function precarregarPdfsLocais() {
+        const arquivosLocais = [
+          '16 - TERMINAL PORTUÁRIO DO PECÉM  58 - 60.pdf',
+          '17 - PORTO DE MUCURIPE - FORTALEZA 61 - 63.pdf',
+        ];
 
-        ctx.fillStyle = '#848e9c';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
+        const cached = loadCache();
+        if (cached.length) {
+          series = cached.map((c, i) => ({
+            name: c.name,
+            color: c.color || COLORS[i % COLORS.length],
+            points: c.points,
+            visible: true,
+          }));
+          recomputeDomain();
+          setDefaultView();
+          statusEl.textContent =
+            'Carregado do cache · ' +
+            series
+              .map((s) => `${s.name}: ${s.points.length} leituras`)
+              .join(' · ');
+          buildLegend();
+          resize();
+          draw();
+          return;
+        }
 
-        yScale.ticks.forEach((tick, index) => {
-            const yPixel = yScale.getPixelForTick(index);
-            if (yPixel >= chart.chartArea.top && yPixel <= chart.chartArea.bottom) {
-                ctx.fillText(tick.value.toFixed(1) + 'm', 44, yPixel);
+        let parsed = [];
+        for (const url of arquivosLocais) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) {
+              const buf = await res.arrayBuffer();
+              const r = await readPdfData(buf);
+              if (r.pts.length) parsed.push({ name: r.name, points: r.pts });
             }
-        });
-    }
+          } catch (err) {
+            console.log('Erro ao carregar arquivo local:', url, err);
+          }
+        }
 
-    function mostrarLoader(t) {
-        document.getElementById('loadingText').textContent = t;
-        document.getElementById('loadingOverlay').style.display = 'flex';
-    }
-    function esconderLoader() {
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-</script>
+        if (parsed.length > 0) {
+          mergeSeries(parsed);
+          recomputeDomain();
+          setDefaultView();
+          saveCache();
+          statusEl.textContent =
+            'PDFs pré-carregados com sucesso · ' +
+            series
+              .map((s) => `${s.name}: ${s.points.length} leituras`)
+              .join(' · ');
+          buildLegend();
+        } else {
+          statusEl.textContent =
+            'Nenhum PDF pré-carregado encontrado. Verifique se os arquivos estão na mesma pasta.';
+        }
+        resize();
+        draw();
+      }
 
-</body>
+      precarregarPdfsLocais();
+    </script>
+  </body>
 </html>
